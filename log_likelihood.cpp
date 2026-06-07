@@ -1,4 +1,12 @@
-#include <log_likelihood.hpp>
+
+#include "log_likelihood.hpp"
+
+//ROOT headers
+#include <TAxis.h>
+
+//stdlib headers
+#include <stdexcept>
+#include <limits> 
 
 namespace peak_search
 {

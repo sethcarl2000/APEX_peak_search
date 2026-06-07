@@ -3,12 +3,9 @@
 
 #include <TH1D.h> 
 #include <TH2D.h> 
-#include <TAxis.h> 
 
 #include <functional> 
 #include <cmath> 
-#include <stdexcept> 
-#include <limits> 
 
 namespace peak_search
 {
