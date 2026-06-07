@@ -1,9 +1,11 @@
 #ifndef peak_search_log_likelihood_hpp
 #define peak_search_log_likelihood_hpp
 
+//ROOT headers
 #include <TH1D.h> 
 #include <TH2D.h> 
 
+//stdlib headers 
 #include <functional> 
 #include <cmath> 
 
@@ -16,7 +18,7 @@ inline double log_factorial(int n) {
     return sum; 
 }
 
-/// @brief Computes log-liklihood for 1D histogram 
+/// @brief Computes log-likelihood for 1D histogram 
 /// @param hist 1D histogram 
 /// @param fcn function to return expectation value for each bin (evaluated at each bin center)
 /// @return log likelihood
