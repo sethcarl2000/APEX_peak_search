@@ -20,20 +20,17 @@ template<typename FitDataType> struct FitResult {
     //check to make sure the fit-result data type is default-constructible
     static_assert(std::is_default_constructible_v<FitDataType>, "FitDataType template param is not default-constructible");
 
-    
     FitDataType data; 
     Status::bit status{Status::kNull};
 
     inline explicit operator bool() const { return status == Status::kSuccess; }
 
-    inline explicit operator FitDataType() const { 
-        return data; 
-    }
+    inline explicit operator FitDataType() const {  return data; }
 
     //null result
-    static FitResult<FitDataType> Null() { return FitResult<FitDataType>{ .status = Status::kNull; }; }
+    inline static FitResult<FitDataType> Null() { return FitResult<FitDataType>{ .status = Status::kNull }; }
     //failed result
-    static FitResult<FitDataType> Fail() { return FitResult<FitDataType>{ .status = Status::kFail; }; }
+    inline static FitResult<FitDataType> Fail() { return FitResult<FitDataType>{ .status = Status::kFail }; }
 };
 
 
