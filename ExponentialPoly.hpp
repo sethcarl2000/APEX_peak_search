@@ -2,6 +2,7 @@
 #define peak_search_ExponentialPoly_hpp
 
 #include "numbers.hpp"
+#include "pdf_fcn.hpp"
 
 #include <vector> 
 #include <cmath> 
@@ -16,23 +17,13 @@ struct ExponentialPoly {
     // f(x) = std::exp( coeffs[0] + coeffs[1]*x + coeffs[2]*x*x + coeffs[3]*x*x*x + ... )
     std::vector<double> coeffs{}; 
 
-    inline double operator()(double x) const {
-        if (coeffs.empty()) return numbers::nan; 
-        
-        double poly = coeffs.back(); 
-        for (int i=((int)coeffs.size())-2; i>=0; i--) { poly = coeffs[i] + poly*x; }
-        return std::exp( poly );
-    }
+    double operator()(double x) const;
 
     //coefficients are stored in the following order: 
     // f(x) = std::exp( coeffs[0] + coeffs[1]*x + coeffs[2]*x*x + coeffs[3]*x*x*x + ... )
-    inline static double Eval(double x, double *coeffs, int n) {
-        if (!coeffs) return numbers::nan;
-        
-        double poly = coeffs[n-1];
-        for (int i=n-2; i>=0; i--) { poly = coeffs[i] + poly*x; }
-        return std::exp( poly );
-    }
+    inline static double Eval(double x, double *coeffs, int n);
+
+    explicit operator PdfFcn_1D() const; 
 };
 
 static_assert(std::is_default_constructible<ExponentialPoly>::value, "ExponentialPoly struct is not default constructible"); 
