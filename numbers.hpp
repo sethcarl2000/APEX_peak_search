@@ -2,6 +2,7 @@
 #define peak_search_numbers_hpp
 
 #include <limits>
+#include <vector> 
 
 namespace peak_search
 {
@@ -14,6 +15,15 @@ namespace numbers
 
     /// @return 'true' if arg is nan, false otherwise. 
     inline bool is_nan(double x) { return x != x; }
+
+    /// @brief positive integer-power. 
+    /// @param x value
+    /// @param n power
+    /// @return x^n
+    inline double int_pow(double x, int n) { double ret=x; while (--n > 0) { ret *= x; }; return ret; }
+ 
+    /// @return 'true' if any elements are nan
+    bool is_nan(const std::vector<double>& v); 
 };
 
 };
