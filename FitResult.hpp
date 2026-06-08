@@ -29,6 +29,11 @@ template<typename FitDataType> struct FitResult {
     inline explicit operator FitDataType() const { 
         return data; 
     }
+
+    //null result
+    static FitResult<FitDataType> Null() { return FitResult<FitDataType>{ .status = Status::kNull; }; }
+    //failed result
+    static FitResult<FitDataType> Fail() { return FitResult<FitDataType>{ .status = Status::kFail; }; }
 };
 
 
