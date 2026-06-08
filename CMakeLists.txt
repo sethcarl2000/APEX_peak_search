@@ -32,12 +32,14 @@ find_package(Eigen3 5.0 REQUIRED)
 #---------------------------------------------------------
 #   Define sources and headers
 set(sources 
+    ExponentialPoly.cpp
     log_likelihood.cpp
     gauss_integrate.hpp
     fit_exponential_poly.cpp
 )
 
 set(headers 
+    ExponentialPoly.hpp
     log_likelihood.hpp
     gauss_integrate.hpp
     fit_exponential_poly.hpp
