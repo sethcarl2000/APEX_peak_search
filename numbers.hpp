@@ -23,7 +23,7 @@ namespace numbers
     inline double int_pow(double x, int n) { double ret=x; while (--n > 0) { ret *= x; }; return ret; }
  
     /// @return 'true' if any elements are nan
-    bool is_nan(const std::vector<double>& v); 
+    bool contains_nan(const std::vector<double>& v); 
 };
 
 };

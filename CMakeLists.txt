@@ -36,6 +36,7 @@ set(sources
     log_likelihood.cpp
     gauss_integrate.hpp
     fit_exponential_poly.cpp
+    numbers.cpp
 )
 
 set(headers 

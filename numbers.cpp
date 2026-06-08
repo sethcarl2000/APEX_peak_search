@@ -5,7 +5,7 @@ namespace peak_search
 namespace numbers
 {
 //____________________________________________________________________________________________________________________
-bool is_nan(const std::vector<double>& v)
+bool contains_nan(const std::vector<double>& v)
 {
     for (const auto& x : v) if (is_nan(x)) { return true; }
     return false;  
