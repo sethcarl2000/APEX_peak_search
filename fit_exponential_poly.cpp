@@ -11,12 +11,12 @@
 
 namespace {
     struct binval_t { double x, N; }; 
-}
+};
 
 namespace peak_search 
 {
     
-FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, const int degree)
+FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
 {
     using Eigen::MatrixXd, Eigen::VectorXd; 
 

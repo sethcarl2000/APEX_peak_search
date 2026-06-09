@@ -34,7 +34,7 @@ find_package(Eigen3 5.0 REQUIRED)
 set(sources 
     ExponentialPoly.cpp
     log_likelihood.cpp
-    gauss_integrate.hpp
+    gauss_integrate.cpp
     fit_exponential_poly.cpp
     numbers.cpp
 )
@@ -55,7 +55,7 @@ root_generate_dictionary(G__ApexPeakSearch ${headers} LINKDEF LinkDef.h)
 
 #---------------------------------------------------------
 #   Add Libraries
-add_library(ApexPeakSearch SHARED ${headers} ${sources} G__ApexPeakSearch.cxx)
+add_library(ApexPeakSearch SHARED ${sources} ${headers} G__ApexPeakSearch.cxx)
 target_include_directories(ApexPeakSearch PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(ApexPeakSearch PUBLIC ROOT::Core Eigen3::Eigen)
 

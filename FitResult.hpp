@@ -12,7 +12,7 @@ namespace Status {
         kFail    =-1, 
         kSuccess =+1
     };
-}
+};
 
 //generic fit-result template, to allow passing of fit-result data 
 template<typename FitDataType> struct FitResult {
