@@ -1,6 +1,8 @@
 #ifndef peak_search_log_likelihood_hpp
 #define peak_search_log_likelihood_hpp
 
+#include "pdf_fcn.hpp"
+
 //ROOT headers
 #include <TH1D.h> 
 #include <TH2D.h> 
@@ -20,15 +22,15 @@ inline double log_factorial(int n) {
 
 /// @brief Computes log-likelihood for 1D histogram 
 /// @param hist 1D histogram 
-/// @param fcn function to return expectation value for each bin (evaluated at each bin center)
+/// @param pdf function to return expectation value for each bin (evaluated at each bin center)
 /// @return log likelihood
-double log_likelihood(TH1D* hist, std::function<double(double)> fcn);
+double log_likelihood(TH1D* hist, double (*fcn)(double));
 
 /// @brief Computes log-liklihood for 2D histogram 
 /// @param hist 2D histogram
 /// @param fcn function to return expectation value for each bin (evaluated at each bin center)
 /// @return log likelihood
-double log_likelihood(TH2D* hist, std::function<double(double,double)> fcn);
+double log_likelihood(TH2D* hist, const PdfFcn_2D& pdf);
 
 };
 
