@@ -13,25 +13,26 @@ namespace peak_search
 {
 
 //_______________________________________________________________________________________________
-double log_likelihood(const histo_1D_t& hist, double (*fcn)(double,const double*), const double* params)
+double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn)
 {   
+#ifdef DEBUG
+    std::printf("in <negative_log_likelihood>\n"); 
+#endif
 
     const double dx = (hist.xmax - hist.xmin)/((double)hist.bins.size()); 
 
     double log_likelihood = 0.; 
 
-    auto wrapper = [fcn,params](double x){ return fcn(x,params); };
-
     for (const auto& bin : hist.bins) {
         double x = bin.x; 
-        double expect = gauss_integrate((double(*)(double))&wrapper, x,x+dx);
+        double expect = gauss_integrate(fcn, x,x+dx);
 
         //number of events in this bin 
         double ni = bin.N;
 
         log_likelihood += -expect + ni*std::log(expect) - log_factorial(ni);  
     }   
-    return log_likelihood; 
+    return -log_likelihood; 
 }
 
 

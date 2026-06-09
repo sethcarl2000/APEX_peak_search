@@ -4,6 +4,7 @@
 #include "FitResult.hpp"
 
 #include <vector>
+#include <functional> 
 #include <TH1D.h> 
 
 namespace peak_search
@@ -14,7 +15,7 @@ namespace peak_search
 /// @param fcn function to fit. subroutine will seek to match the integral of this function over each bin to the bin's contents.
 /// @param params array of parameters to optimize
 /// @return negative log-likelihood of best fit found. 'nan' if fit is unsuccessful. 
-double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std::vector<double>& params);
+double best_likelihood_fit(TH1D* hist, const std::function<double(double,const double*)>& fcn, std::vector<double>& params);
 
 };
 #endif

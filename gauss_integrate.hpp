@@ -3,6 +3,8 @@
 
 #include <pdf_fcn.hpp>
 
+#include <functional> 
+
 namespace peak_search
 {
 
@@ -10,7 +12,7 @@ namespace peak_search
 /// @param fcn input fcn 
 /// @param params relevant params
 /// @return numerical gauss integral over region
-double gauss_integrate(double (*fcn)(double), double xmin,double xmax);
+double gauss_integrate(const std::function<double(double)>& fcn, double xmin,double xmax);
 
 /// @brief Do gauss integration (n=4) for region given
 /// @param fcn input fcn 

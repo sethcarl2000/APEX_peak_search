@@ -16,7 +16,7 @@
 namespace peak_search
 {
 
-double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std::vector<double>& params)
+double best_likelihood_fit(TH1D* hist, const std::function<double(double,const double*)>& fcn, std::vector<double>& params)
 {
 
     if (!hist) {
@@ -35,9 +35,7 @@ double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std:
     //make a copy of all bin contents
     auto bins = copy_1D_hist(hist);
 
-    auto minimizer = std::unique_ptr<ROOT::Math::Minimizer>(
-        ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad")
-    ); 
+    auto minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad");
 
     if (!minimizer) {
         throw std::logic_error(Form("in <%s>: minimizer failed to be initialized.",__func__)); 
@@ -49,12 +47,22 @@ double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std:
     minimizer->SetTolerance(1e-3);
     minimizer->SetPrintLevel(2);
 
-    auto negative_log_likelihood = [fcn, &bins](const double* par){
-        
-        return -1.* log_likelihood(bins, fcn, par); 
+
+    auto objective_fcn = [fcn, &bins](const double* par){
+#ifdef DEBUG
+        std::printf("in <best_likelihood_fit::objective_fcn>\n");
+#endif        
+        auto wrapper = [&fcn,par](double x){ 
+#ifdef DEBUG
+        std::printf("in <best_likelihood_fit::objective_fcn::wrapper_fcn>. par: %p, &fcn: %p\n", par, &fcn);
+#endif                
+            return fcn(x,par); 
+        };
+
+        return negative_log_likelihood(bins, wrapper); 
     };
 
-    auto f_minimizer = ROOT::Math::Functor(negative_log_likelihood, params.size());
+    auto f_minimizer = ROOT::Math::Functor(objective_fcn, params.size());
     
     minimizer->SetFunction(f_minimizer);
 
@@ -63,6 +71,7 @@ double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std:
     for (int i_var=0; i_var<params.size(); i_var++) { 
         minimizer->SetVariable(i_var, Form("param_%i",i_var), params[i_var], 1e-4);
     }
+    std::printf("staring minimization:\n"); 
 
     bool fit_status = minimizer->Minimize();
 
@@ -74,7 +83,7 @@ double best_likelihood_fit(TH1D* hist, double (*fcn)(double,const double*), std:
     //copy the result to our vector
     for (int i=0; i<params.size(); i++) params[i] = params_result[i];
     
-    return negative_log_likelihood(const_cast<const double*>(params.data()));
+    return negative_log_likelihood(bins, [&params,&fcn](double x){ return fcn(x,params.data()); });
 }
     
 };

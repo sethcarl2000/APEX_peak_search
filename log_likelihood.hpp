@@ -31,8 +31,8 @@ double log_likelihood(TH1D* hist, double (*fcn)(double));
 /// @brief Computes log-likelihood for 1D histogram 
 /// @param hist vector of 1D histogram bins 
 /// @param pdf function to return expectation value for each bin (evaluated at each bin center)
-/// @return log likelihood
-double log_likelihood(const histo_1D_t& hist, double (*fcn)(double,const double*), const double* params);
+/// @return negative log likelihood
+double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn);
 
 /// @brief Computes log-liklihood for 2D histogram 
 /// @param hist 2D histogram

@@ -1,18 +1,21 @@
 
 #include <gauss_integrate.hpp>
 
+#include <cstdio> 
+#include <vector> 
+
 namespace {
     //order of quadrature
     constexpr int n_order = 4; 
 
-    constexpr double gauss_weight[] = {
+    const std::vector<double> gauss_weight{
         0.3478548451374538,
         0.6521451548625461, 	
         0.6521451548625461, 	
         0.3478548451374538
     };
 
-    constexpr double gauss_abscissa[] = {
+    const std::vector<double> gauss_abscissa{
         -0.8611363115940526,
         -0.3399810435848563,
         +0.3399810435848563,
@@ -24,14 +27,21 @@ namespace peak_search
 {
 
 //___________________________________________________________________________________________________________________
-double gauss_integrate(double (*fcn)(double), double xmin,double xmax)
+double gauss_integrate(const std::function<double(double)>& fcn, double xmin,double xmax)
 {
+#ifdef DEBUG
+    std::printf("in <gauss_integrate>\n");
+#endif
     double scale  = (xmax-xmin)/2.;
     double center = (xmax+xmin)/2.; 
 
     double sum =0.; 
     for (int ix=0; ix<n_order; ix++) {
         double x = scale*gauss_abscissa[ix] + center; 
+
+#ifdef DEBUG
+        std::printf("in <gauss_integrate>: calling fcn\n");
+#endif
         sum += fcn(x) * gauss_weight[ix];
     }
     return sum * scale; 
