@@ -10,13 +10,12 @@ namespace peak_search
 /// @param fcn input fcn 
 /// @param params relevant params
 /// @return numerical gauss integral over region
-double gauss_integrate(const PdfFcn_1D& fcn, const double* params, double xmin,double xmax);
+double gauss_integrate(double (*fcn)(double), double xmin,double xmax);
 
 /// @brief Do gauss integration (n=4) for region given
 /// @param fcn input fcn 
-/// @param params relevant params
 /// @return numerical gauss integral over region
-double gauss_integrate(const PdfFcn_2D& fcn, const double* params, double xmin,double xmax, double ymin,double ymax);
+double gauss_integrate(double (*fcn)(double,double), double xmin,double xmax, double ymin,double ymax);
 
 };
 
