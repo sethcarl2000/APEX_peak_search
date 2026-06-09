@@ -21,7 +21,7 @@ struct ExponentialPoly {
 
     //coefficients are stored in the following order: 
     // f(x) = std::exp( coeffs[0] + coeffs[1]*x + coeffs[2]*x*x + coeffs[3]*x*x*x + ... )
-    inline static double Eval(double x, double *coeffs, int n);
+    static double Eval(double x, const double *coeffs, int n);
 
     explicit operator PdfFcn_1D() const; 
 };

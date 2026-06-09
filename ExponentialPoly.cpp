@@ -13,7 +13,7 @@ double ExponentialPoly::operator()(double x) const
     return std::exp( poly );
 }
 //_______________________________________________________________________________________________
-double ExponentialPoly::Eval(double x, double *coeffs, int n) 
+double ExponentialPoly::Eval(double x, const double *coeffs, int n) 
 {
     if (!coeffs) return numbers::nan;
 
