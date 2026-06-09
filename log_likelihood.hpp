@@ -2,6 +2,7 @@
 #define peak_search_log_likelihood_hpp
 
 #include "pdf_fcn.hpp"
+#include "bininfo.hpp"
 
 //ROOT headers
 #include <TH1D.h> 
@@ -10,6 +11,7 @@
 //stdlib headers 
 #include <functional> 
 #include <cmath> 
+#include <vector> 
 
 namespace peak_search
 {
@@ -25,6 +27,12 @@ inline double log_factorial(int n) {
 /// @param pdf function to return expectation value for each bin (evaluated at each bin center)
 /// @return log likelihood
 double log_likelihood(TH1D* hist, double (*fcn)(double));
+
+/// @brief Computes log-likelihood for 1D histogram 
+/// @param hist vector of 1D histogram bins 
+/// @param pdf function to return expectation value for each bin (evaluated at each bin center)
+/// @return log likelihood
+double log_likelihood(const histo_1D_t& hist, double (*fcn)(double,const double*), const double* params);
 
 /// @brief Computes log-liklihood for 2D histogram 
 /// @param hist 2D histogram
