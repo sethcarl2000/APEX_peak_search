@@ -1,5 +1,6 @@
 #include "fit_exponential_poly.hpp"
 #include "best_likelihood_fit.hpp"
+#include "bininfo.hpp"
 
 //ROOT header
 #include <TAxis.h> 
@@ -8,7 +9,8 @@
 #include <eigen3/Eigen/Core> 
 #include <eigen3/Eigen/Dense>
 //stdlib headers
-#include <vector> 
+#include <vector>
+#include <iostream>  
 
 namespace {
     struct binval_t { double x, N; }; 
@@ -32,15 +34,21 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     const double dx = (xax->GetXmax() - xax->GetXmin())/((double)xax->GetNbins()); 
 
     //download all the histogram data locally
-    std::vector<binval_t> bins; 
-    bins.reserve(xax->GetNbins());
-    for (int b=1; b<=xax->GetNbins(); b++) bins.emplace_back( xax->GetBinCenter(b), hist->GetBinContent(b) );
+    auto data = copy_1D_hist(hist);
+
+    double scale  = (xax->GetXmax() - xax->GetXmin())/2.;    
+    double center = (xax->GetXmax() + xax->GetXmin())/2.;
+
+    //re-normalize the points (to make fit go a little easier)
+    for (auto& bin : data.bins) { 
+        bin.x = (bin.x - center)/scale;
+    }
 
     //first, try to fit the polynomial using a chi-square fit. 
     MatrixXd A = MatrixXd::Zero(degree, degree);
     VectorXd B = VectorXd::Zero(degree);
 
-    for (const auto& bin : bins) {
+    for (const auto& bin : data.bins) {
 
         //don't want to take the logarithm of 0! 
         if (bin.N <= 1e-6) continue; 
@@ -70,9 +78,20 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     if (coeffs.size() != (size_t)degree || numbers::contains_nan(coeffs)) { return FitResult<ExponentialPoly>::Fail(); }
 
     //scale this coefficient to that we can *integrate* over each bin
-    coeffs[0] += std::log( 1./dx );
+    coeffs[0] += std::log( 2./((double)data.bins.size()) );
 
-    //return { ExponentialPoly{coeffs}, Status::kSuccess }; 
+#ifdef DEBUG
+    std::cout << "coeffs: ";
+    for (auto x : coeffs) std::cout << x << " "; 
+    std::cout << "\n";
+#endif 
+
+
+#ifdef DEBUG
+    std::cout << "coeffs_descale: ";
+    for (auto x : coeffs_descale) std::cout << x << " "; 
+    std::cout << "\n";
+#endif
 
     //now, we will find the max-likelihood estimator 
     auto wrapper = [degree](double x, const double* par){ return ExponentialPoly::Eval(x,par,degree); };
@@ -80,9 +99,20 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
 
     if (numbers::is_nan(nll)) { return FitResult<ExponentialPoly>::Fail(); }
 
-    FitResult<ExponentialPoly> result{ ExponentialPoly{coeffs}, Status::kSuccess };  
-    
-    return result; 
+    //now, de-scale each exponent.
+    std::vector<double> coeffs_descale(degree, 0.);
+
+    for (int i=0; i<degree; i++) {
+
+        double prefactor = coeffs[i] / numbers::int_pow(scale, i);
+
+        for (int k=0; k<=i; k++) { 
+            coeffs_descale[k] 
+                += prefactor * numbers::n_choose_k(i, k) * numbers::int_pow(-center, i-k); 
+        }
+    }
+
+    return { ExponentialPoly{coeffs_descale}, Status::kSuccess }; 
 }
 
 };
