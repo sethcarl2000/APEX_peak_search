@@ -22,6 +22,12 @@ namespace peak_search
 /// @return chi^2
 double chisquare(TH1D* hist, const std::function<double(double)>& fcn);
 
+/// @brief computes p-value for chi-square. 
+/// @param chi2 chi^2 value returned by above fcn 
+/// @param n_bins number of bins in histogram
+/// @return p-value (prob. that chi-square as big or larger than given val)
+double chisquare_p(double chi2, int n_bins);
+
 };
 
 

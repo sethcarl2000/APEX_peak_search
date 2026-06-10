@@ -3,6 +3,7 @@
 #include "gauss_integrate.hpp"
 
 #include <Math/ProbFunc.h>
+#include <Math/QuantFuncMathCore.h>
 #include <TString.h> 
 
 #include <stdexcept> 
@@ -10,6 +11,7 @@
 namespace peak_search
 {
 
+//_______________________________________________________________________________________-
 double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
 {
     if (!hist) {
@@ -45,6 +47,12 @@ double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
     }   
 
     return chi2; 
+}
+//_______________________________________________________________________________________-
+double chisquare_p(double chi2, int n_bins)
+{
+    //return ROOT::Math::gamma_cdf_c(chi2/2., ((double)n_bins)/2., 1.); 
+    return ROOT::Math::chisquared_cdf(chi2, n_bins);
 }
 
 };
