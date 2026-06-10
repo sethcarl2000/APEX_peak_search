@@ -1,6 +1,7 @@
 
 #include "log_likelihood.hpp"
 #include "gauss_integrate.hpp"
+#include "numbers.hpp"
 
 //ROOT headers
 #include <TAxis.h>
@@ -25,19 +26,38 @@ double negative_log_likelihood(const histo_1D_t& hist, const std::function<doubl
 
     for (const auto& bin : hist.bins) {
         double x = bin.x; 
-        double expect = gauss_integrate(fcn, x,x+dx);
+        double expect = gauss_integrate(fcn, x-dx/2., x+dx/2.);
 
         //number of events in this bin 
         double ni = bin.N;
 
-        log_likelihood += -expect + ni*std::log(expect) - log_factorial(ni);  
+        log_likelihood += -expect + ni*std::log(expect) - numbers::log_factorial(ni);  
     }   
     return -log_likelihood; 
 }
-
-
 //_______________________________________________________________________________________________
-double log_likelihood(TH1D* hist, double (*fcn)(double))
+double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn)
+{   
+#ifdef DEBUG
+    std::printf("in <negative_log_likelihood>\n"); 
+#endif
+    const double dx = (hist.xmax - hist.xmin)/((double)hist.bins.size()); 
+
+    double NLL = 0.; 
+
+    for (const auto& bin : hist.bins) {
+        double x = bin.x; 
+        double expect = gauss_integrate(fcn, x-dx/2.,x+dx/2.);
+
+        //number of events in this bin 
+        double ni = bin.N;
+
+        NLL += expect - ni*std::log(expect);
+    }
+    return NLL; 
+}
+//_______________________________________________________________________________________________
+double log_likelihood(TH1D* hist, const std::function<double(double)>& fcn)
 {   
     if (!hist) {
         throw std::logic_error("in <log_likelihood>: hist ptr is null"); 
@@ -58,7 +78,7 @@ double log_likelihood(TH1D* hist, double (*fcn)(double))
         //number of events in this bin 
         double ni = hist->GetBinContent(bx);
 
-        log_likelihood += -expect + ni*std::log(expect) - log_factorial(ni);  
+        log_likelihood += -expect + ni*std::log(expect) - numbers::log_factorial(ni);  
     }   
     return log_likelihood; 
 }
@@ -91,7 +111,7 @@ double log_likelihood(TH2D* hist, double (*fcn)(double,double))
             //number of events in this bin 
             double ni = hist->GetBinContent(bx,by);
 
-            log_likelihood += -expect + ni*std::log(expect) - log_factorial(ni);  
+            log_likelihood += -expect + ni*std::log(expect) - numbers::log_factorial(ni);  
         
             y += dy; 
         }
