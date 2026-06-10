@@ -36,7 +36,7 @@ double negative_log_likelihood(const histo_1D_t& hist, const std::function<doubl
     return -log_likelihood; 
 }
 //_______________________________________________________________________________________________
-double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn)
+double modified_nll(const histo_1D_t& hist, const std::function<double(double)>& fcn)
 {   
 #ifdef DEBUG
     std::printf("in <negative_log_likelihood>\n"); 
