@@ -1,5 +1,6 @@
 #include "fit_exponential_poly.hpp"
 #include "best_likelihood_fit.hpp"
+#include "log_likelihood.hpp"
 #include "bininfo.hpp"
 
 //ROOT header
@@ -43,6 +44,8 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     for (auto& bin : data.bins) { 
         bin.x = (bin.x - center)/scale;
     }
+    data.xmax = +1.;
+    data.xmin = -1.; 
 
     //first, try to fit the polynomial using a chi-square fit. 
     MatrixXd A = MatrixXd::Zero(degree, degree);
@@ -78,8 +81,10 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     if (coeffs.size() != (size_t)degree || numbers::contains_nan(coeffs)) { return FitResult<ExponentialPoly>::Fail(); }
 
     //scale this coefficient to that we can *integrate* over each bin
-    coeffs[0] += std::log( 2./((double)data.bins.size()) );
+    double dx_scaled = 2./((double)data.bins.size());
+    coeffs[0] += std::log( 1./dx_scaled );
 
+    
 #ifdef DEBUG
     std::cout << "coeffs: ";
     for (auto x : coeffs) std::cout << x << " "; 
@@ -92,12 +97,20 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     for (auto x : coeffs_descale) std::cout << x << " "; 
     std::cout << "\n";
 #endif
-
+    
     //now, we will find the max-likelihood estimator 
     auto wrapper = [degree](double x, const double* par){ return ExponentialPoly::Eval(x,par,degree); };
-    double nll = best_likelihood_fit(hist, wrapper, coeffs); 
+ 
+    ExponentialPoly poly{coeffs};
+    std::printf("Negative log likelihood for least-squares fit: %f\n", negative_log_likelihood(data, poly)); 
 
-    if (numbers::is_nan(nll)) { return FitResult<ExponentialPoly>::Fail(); }
+    double nll = best_likelihood_fit(data, wrapper, coeffs); 
+
+
+    if (numbers::is_nan(nll)) { return FitResult<ExponentialPoly>::Fail(); } //*/ 
+
+    //remove this scaling for a moment
+    coeffs[0] += -std::log( 1./dx_scaled );
 
     //now, de-scale each exponent.
     std::vector<double> coeffs_descale(degree, 0.);
@@ -111,6 +124,8 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
                 += prefactor * numbers::n_choose_k(i, k) * numbers::int_pow(-center, i-k); 
         }
     }
+    coeffs_descale[0] += std::log( 1./dx );
+
 
     return { ExponentialPoly{coeffs_descale}, Status::kSuccess }; 
 }
