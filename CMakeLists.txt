@@ -53,6 +53,7 @@ set(headers
     bininfo.hpp
     best_likelihood_fit.hpp
     chisquare.hpp
+    fit_parameter.hpp
 )
 
 #---------------------------------------------------------

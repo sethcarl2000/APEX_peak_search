@@ -1,11 +1,13 @@
 #include "fit_exponential_poly.hpp"
 #include "best_likelihood_fit.hpp"
 #include "log_likelihood.hpp"
+#include "fit_parameter.hpp"
 #include "bininfo.hpp"
 
 //ROOT header
 #include <TAxis.h> 
 #include <TError.h> 
+#include <TString.h> 
 //eigen header
 #include <eigen3/Eigen/Core> 
 #include <eigen3/Eigen/Dense>
@@ -75,14 +77,19 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     //now, solve this system 
     VectorXd coeffs_vec = A.llt().solve(B); 
     
-    std::vector<double> coeffs( coeffs_vec.data(), coeffs_vec.data() + coeffs_vec.size() );
+    std::vector<fit_parameter_t> coeffs; coeffs.reserve(coeffs_vec.size()); 
+    
+    for (size_t i=0; i<coeffs_vec.size(); i++) {
+        coeffs.emplace_back(fit_parameter_t{ .val = coeffs_vec[i], .name = Form("c%zi",i), .is_fixed = false }); 
+    }
+    //std::vector<double> coeffs( coeffs_vec.data(), coeffs_vec.data() + coeffs_vec.size() );
 
     //check for NaN
-    if (coeffs.size() != (size_t)degree || numbers::contains_nan(coeffs)) { return FitResult<ExponentialPoly>::Fail(); }
+    if (coeffs.size() != (size_t)degree) { return FitResult<ExponentialPoly>::Fail(); }
 
     //scale this coefficient to that we can *integrate* over each bin
     double dx_scaled = 2./((double)data.bins.size());
-    coeffs[0] += std::log( 1./dx_scaled );
+    coeffs[0].val += std::log( 1./dx_scaled );
 
     
 #ifdef DEBUG
@@ -100,24 +107,20 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
     
     //now, we will find the max-likelihood estimator 
     auto wrapper = [degree](double x, const double* par){ return ExponentialPoly::Eval(x,par,degree); };
- 
-    ExponentialPoly poly{coeffs};
-    std::printf("Negative log likelihood for least-squares fit: %f\n", negative_log_likelihood(data, poly)); 
-
+    
     double nll = best_likelihood_fit(data, wrapper, coeffs); 
-
 
     if (numbers::is_nan(nll)) { return FitResult<ExponentialPoly>::Fail(); } //*/ 
 
     //remove this scaling for a moment
-    coeffs[0] += -std::log( 1./dx_scaled );
+    coeffs[0].val += -std::log( 1./dx_scaled );
 
-    //now, de-scale each exponent.
+    //now, de-scale each exponent.s
     std::vector<double> coeffs_descale(degree, 0.);
 
     for (int i=0; i<degree; i++) {
 
-        double prefactor = coeffs[i] / numbers::int_pow(scale, i);
+        double prefactor = coeffs[i].val / numbers::int_pow(scale, i);
 
         for (int k=0; k<=i; k++) { 
             coeffs_descale[k] 

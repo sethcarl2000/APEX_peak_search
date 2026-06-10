@@ -17,7 +17,7 @@
 namespace peak_search
 {
 
-double best_likelihood_fit(const histo_1D_t& data, const std::function<double(double,const double*)>& fcn, std::vector<double>& params)
+double best_likelihood_fit(const histo_1D_t& data, const std::function<double(double,const double*)>& fcn, std::vector<fit_parameter_t>& params)
 {
 
     if (params.empty()) {
@@ -63,7 +63,9 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
 
     //set the list of variables
     for (int i_var=0; i_var<params.size(); i_var++) { 
-        minimizer->SetVariable(i_var, Form("x_pow_%i",i_var), params[i_var], std::pow(1.25, i_var));
+        const auto& par = params[i_var];
+        minimizer->SetVariable(i_var, Form("x_pow_%i",i_var), par.val, std::pow(1.25, i_var));
+        if (par.is_fixed) { minimizer->FixVariable(i_var); }
     }
     
     bool fit_status = minimizer->Minimize();
@@ -74,9 +76,9 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
     const double* errors = minimizer->Errors(); 
 
     //copy the result to our vector
-    for (int i=0; i<params.size(); i++) params[i] = params_result[i];
+    for (int i=0; i<params.size(); i++) params[i].val = params_result[i];
     
-    return negative_log_likelihood(data, [&params,&fcn](double x){ return fcn(x,params.data()); });
+    return negative_log_likelihood(data, [params_result,&fcn](double x){ return fcn(x,params_result); });
 }
     
 };
