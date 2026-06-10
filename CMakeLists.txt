@@ -25,7 +25,7 @@ set(CMAKE_PLATFORM_INDEPENDENT_CODE ON)
 
 #---------------------------------------------------------
 #   Find ROOT (necessary)
-find_package(ROOT 6.20 REQUIRED COMPONENTS Core RIO Physics)
+find_package(ROOT 6.20 REQUIRED COMPONENTS Core RIO Physics MathCore)
 #   Find Eigen3 
 find_package(Eigen3 5.0 REQUIRED)
 
@@ -39,6 +39,7 @@ set(sources
     numbers.cpp
     bininfo.cpp
     best_likelihood_fit.cpp
+    chisquare.cpp
 )
 
 set(headers 
@@ -51,6 +52,7 @@ set(headers
     numbers.hpp 
     bininfo.hpp
     best_likelihood_fit.hpp
+    chisquare.hpp
 )
 
 #---------------------------------------------------------
