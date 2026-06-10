@@ -37,6 +37,8 @@ set(sources
     gauss_integrate.cpp
     fit_exponential_poly.cpp
     numbers.cpp
+    bininfo.cpp
+    best_likelihood_fit.cpp
 )
 
 set(headers 
@@ -47,6 +49,8 @@ set(headers
     FitResult.hpp
     pdf_fcn.hpp
     numbers.hpp 
+    bininfo.hpp
+    best_likelihood_fit.hpp
 )
 
 #---------------------------------------------------------
