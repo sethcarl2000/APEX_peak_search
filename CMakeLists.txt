@@ -40,6 +40,7 @@ set(sources
     bininfo.cpp
     best_likelihood_fit.cpp
     chisquare.cpp
+    compute_Q0.cpp
 )
 
 set(headers 
@@ -54,6 +55,7 @@ set(headers
     best_likelihood_fit.hpp
     chisquare.hpp
     fit_parameter.hpp
+    compute_Q0.hpp
 )
 
 #---------------------------------------------------------
