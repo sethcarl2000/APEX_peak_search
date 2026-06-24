@@ -32,6 +32,7 @@ find_package(Eigen3 5.0 REQUIRED)
 #---------------------------------------------------------
 #   Define sources and headers
 set(sources 
+    legendre_polynomial.cpp
     ExponentialPoly.cpp
     log_likelihood.cpp
     gauss_integrate.cpp
@@ -44,6 +45,7 @@ set(sources
 )
 
 set(headers 
+    legendre_polynomial.hpp
     ExponentialPoly.hpp
     log_likelihood.hpp
     gauss_integrate.hpp
