@@ -33,7 +33,7 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
 
     minimizer->SetMaxFunctionCalls(1e7); 
     minimizer->SetMaxIterations(1e6); 
-    minimizer->SetTolerance(0.01);
+    minimizer->SetTolerance(0.1);
     minimizer->SetPrintLevel(0);
 
     const double dx = (data.xmax - data.xmin)/((double)data.bins.size());
@@ -70,7 +70,10 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
     
     bool fit_status = minimizer->Minimize();
 
-    if (!fit_status) return numbers::nan;
+    if (!fit_status) { 
+        Error(__func__, "fit failed");
+        return numbers::nan;
+    }
 
     const double* params_result = minimizer->X(); 
     const double* errors = minimizer->Errors(); 
