@@ -21,7 +21,7 @@ namespace {
 
 namespace peak_search 
 {
-    
+//______________________________________________________________________________________________________________________________
 FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
 {
     using Eigen::MatrixXd, Eigen::VectorXd; 
@@ -31,16 +31,20 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
         Error(__func__, "hist passed is null");
         return FitResult<ExponentialPoly>::Null(); 
     }
-    
-    auto xax = hist->GetXaxis(); 
-    
-    const double dx = (xax->GetXmax() - xax->GetXmin())/((double)xax->GetNbins()); 
 
-    //download all the histogram data locally
     auto data = copy_1D_hist(hist);
 
-    double scale  = (xax->GetXmax() - xax->GetXmin())/2.;    
-    double center = (xax->GetXmax() + xax->GetXmin())/2.;
+    return fit_exponential_poly(data, degree);
+}
+//______________________________________________________________________________________________________________________________
+FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
+{
+    using Eigen::MatrixXd, Eigen::VectorXd; 
+    
+    const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
+
+    double scale  = (data.xmax - data.xmin)/2.;    
+    double center = (data.xmax + data.xmin)/2.;
 
     //re-normalize the points (to make fit go a little easier)
     for (auto& bin : data.bins) { 
@@ -132,5 +136,6 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
 
     return { ExponentialPoly{coeffs_descale}, Status::kSuccess }; 
 }
+//______________________________________________________________________________________________________________________________
 
 };
