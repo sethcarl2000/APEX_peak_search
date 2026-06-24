@@ -34,15 +34,33 @@ namespace {
     //this will be the background event generator 
     double generate_bg_accidental(TRandom3& rand) {
 
-        static constexpr double x0_bg = 250.; 
-        static constexpr double sigma_bg = 45.; 
+        static constexpr double x0 = 250.; 
+        static constexpr double sigma = 45.; 
 
         double x; 
         do {
-            x = rand.Gaus()*sigma_bg + x0_bg;
+            x = rand.Gaus()*sigma + x0;
     
             //now, bias it a bit 
             x += 50.*std::sin( pi*(x-x_min)/((x_max-x_min)) ); 
+
+        } while (x < x_min || x > x_max); 
+
+        return x; 
+    }
+
+    //this will be the background event generator 
+    double generate_bg_coinc(TRandom3& rand) {
+
+        static constexpr double x0 = 260.; 
+        static constexpr double sigma = 40.; 
+
+        double x; 
+        do {
+            x = rand.Gaus()*sigma + x0;
+    
+            //now, bias it a bit 
+            x += 40.*std::sin( pi*(x-x_min)/((x_max-x_min)) ); 
 
         } while (x < x_min || x > x_max); 
 
@@ -66,7 +84,7 @@ int toy_peak_search(const long n_events)
 
     for (long i=0; i<n_events; i++) hist->Fill( generate_bg_accidental(rand) );
 
-    auto fit_result = peak_search::fit_exponential_poly(hist, 5); 
+    auto fit_result = peak_search::fit_exponential_poly(hist, 8); 
     
     
     if (!(bool)fit_result) {
