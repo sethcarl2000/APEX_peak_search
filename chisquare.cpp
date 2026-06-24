@@ -19,14 +19,20 @@ double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
         return std::numeric_limits<double>::quiet_NaN(); 
     }
 
-    auto xax = hist->GetXaxis();
-    const double dx = (xax->GetXmax() - xax->GetXmin())/((double)xax->GetNbins()); 
+    auto data = copy_1D_hist(hist); 
 
-    int DoF = xax->GetNbins(); 
+    return chisquare(data, fcn); 
+}
+//_______________________________________________________________________________________-
+double chisquare(histo_1D_t data, const std::function<double(double)>& fcn)
+{
+    const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
+
+    int DoF = data.bins.size(); 
     double chi2 = 0.;
 
-    double x = xax->GetXmin(); 
-    for (int bx=1; bx<xax->GetNbins(); bx++) {
+    double x = data.xmin; 
+    for (int bx=0; bx<data.bins.size(); bx++) {
 
         double expect = gauss_integrate(fcn, x,x+dx);
         x += dx; 
@@ -39,7 +45,7 @@ double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
         }
 
         //number of events in this bin 
-        double ni = hist->GetBinContent(bx);
+        double ni = data.bins[bx].N;
 
         double chi = (ni - expect);
 
