@@ -11,11 +11,13 @@ namespace peak_search
 
 //_______________________________________________________________________________________________________________________________
 void Fcn1D::SetParams(const std::vector<double>& new_par) { 
+    par.resize(new_par.size());
     std::copy( new_par.begin(), new_par.end(), par.begin() ); 
 }
 //_______________________________________________________________________________________________________________________________
-void Fcn1D::SetParams(const Eigen::VectorXd& v) { 
-    std::copy( v.begin(), v.end(), par.begin() ); 
+void Fcn1D::SetParams(const Eigen::VectorXd& new_par) { 
+    par.resize(new_par.size());
+    std::copy( new_par.begin(), new_par.end(), par.begin() ); 
 }
 //_______________________________________________________________________________________________________________________________
 void Fcn1D::SetParams(const std::vector<fit_parameter_t>& new_par) {
