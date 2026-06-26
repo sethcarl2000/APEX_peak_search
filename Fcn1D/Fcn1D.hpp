@@ -24,14 +24,13 @@ public:
     
     Fcn1D(const std::vector<double>& _par={}) : par{_par} {}; 
 
-    virtual ~Fcn1D() = 0; 
+    virtual ~Fcn1D() {}; 
 
+    void SetParams(std::vector<double>::const_iterator _begin, size_t _length);
     //set parameters. 
     // this may be overridden, for example if you want to require that a certain number of parameters are passed.
     virtual void SetParams(const std::vector<double>& par); 
-    //set parameters. 
-    // this may be overridden, for example if you want to require that a certain number of parameters are passed.
-    virtual void SetParams(const Eigen::VectorXd& v); 
+    virtual void SetParams(const Eigen::VectorXd& par); 
     //calls above fcn, but uses
     virtual void SetParams(const std::vector<fit_parameter_t>& par); 
     

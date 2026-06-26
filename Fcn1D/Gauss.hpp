@@ -1,21 +1,19 @@
-#ifndef peak_search_LegendrePoly_hpp
-#define peak_search_LegendrePoly_hpp
-//*************************
-// -bear's comment. 25 Jun 26
+#ifndef peak_search_Gauss_hpp
+#define peak_search_Gauss_hpp
 
 #include <Fcn1D/Fcn1D.hpp>
 
 namespace peak_search
 {
 
-class LegendrePoly : public Fcn1D {
+/// @brief 1D fcn representing normalized gaussisan, with integral = mu (par[0]). NOTE: only 'mu' (0-th parameter) has derivatives implemented
+class Gauss : public Fcn1D {
 private: 
-    double xmin, xmax; 
-    double x_scale, x_center;
+    double x0, sigma; 
 
 public: 
 
-    LegendrePoly(const std::vector<double>& par={}, double x_min=-1., double x_max=+1.);
+    Gauss(double mu, double x0, double sigma);
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //mandatory interface: 
@@ -28,7 +26,7 @@ public:
     /// @brief derivative w/r/t parameter i
     /// @param x arg 'x'
     /// @param i index of parameter to take derivative w/r/t 
-    /// @return d/d\theta_i * f(x)
+    /// @return d/d\theta-*_i * f(x)
     double Di (double, int) const override; 
 
     //double-derivative w/r/t parameters i, j 
