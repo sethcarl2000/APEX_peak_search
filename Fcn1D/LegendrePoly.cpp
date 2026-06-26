@@ -1,12 +1,12 @@
-#include "LegendrePoly.hpp"
+#include <Fcn1D/LegendrePoly.hpp> 
 #include "legendre_polynomial.hpp"
 
 namespace peak_search 
 {
 
 //_______________________________________________________________________________________________________________________________
-LegendrePoly::LegendrePoly(int DoF, const std::vector<double>& par={}, double x_min, double x_max) 
-    : Fcn1D(DoF, par),
+LegendrePoly::LegendrePoly(const std::vector<double>& par, double x_min, double x_max) 
+    : Fcn1D(par),
     xmin{x_min},
     xmax{x_max}
 {   
@@ -26,18 +26,18 @@ double LegendrePoly::operator()(double x) const
     double Pn_m1  = 0.; //P_{n-1}(x) 
     double Pn     = 1.; //P_{n}(x)
     
-    int n=0;
     double result = 0.; 
 
+    int n=0;
     int n_max = par.size()-1; 
     
     do {
         //add the current poly to the list of all orders
         result += par[n] * Pn; 
 
-        double N = (double)n; 
         //compute the next poly, using bonett's recursion formula
         // P_{n+1}(x)
+        double N = (double)n; 
         double Pn_p1 = ( (2.*N + 1.)*x*Pn - N*Pn_m1 )/(N + 1.); 
 
         //now, shift all the definitions up by n => n+1

@@ -3,7 +3,7 @@
 //*************************
 // -bear's comment. 25 Jun 26
 
-#include "Fcn1D.hpp"
+#include <Fcn1D/Fcn1D.hpp>
 
 namespace peak_search
 {
@@ -15,7 +15,7 @@ private:
 
 public: 
 
-    LegendrePoly(int DoF, const std::vector<double>& par, double x_min, double x_max) : Fcn1D(DoF, par) {};
+    LegendrePoly(const std::vector<double>& par={}, double x_min=-1., double x_max=+1.);
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //mandatory interface: 
