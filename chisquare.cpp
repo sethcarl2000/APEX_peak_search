@@ -12,10 +12,10 @@ namespace peak_search
 {
 
 //_______________________________________________________________________________________-
-double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
+double chisquare(TH1D* hist, const Fcn1D& fcn)
 {
     if (!hist) {
-        throw std::logic_error("in <log_likelihood>: hist ptr is null"); 
+        throw std::logic_error("in <chisquare>: hist ptr is null"); 
         return std::numeric_limits<double>::quiet_NaN(); 
     }
 
@@ -24,7 +24,7 @@ double chisquare(TH1D* hist, const std::function<double(double)>& fcn)
     return chisquare(data, fcn); 
 }
 //_______________________________________________________________________________________-
-double chisquare(histo_1D_t data, const std::function<double(double)>& fcn)
+double chisquare(histo_1D_t data, const Fcn1D& fcn)
 {
     const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
 

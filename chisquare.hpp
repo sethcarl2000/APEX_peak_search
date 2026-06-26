@@ -1,8 +1,8 @@
 #ifndef peak_search_chisquare_hpp
 #define peak_search_chisquare_hpp
 
-#include "pdf_fcn.hpp"
-#include "bininfo.hpp"
+#include <Fcn1D/Fcn1D.hpp> 
+#include <bininfo.hpp>
 
 //ROOT headers
 #include <TH1D.h> 
@@ -20,13 +20,13 @@ namespace peak_search
 /// @param hist 1D histogram 
 /// @param pdf function to return expectation value for each bin (integrated over each bin)
 /// @return chi^2
-double chisquare(TH1D* hist, const std::function<double(double)>& fcn);
+double chisquare(TH1D* hist, const Fcn1D& fcn);
 
 /// @brief computes chi^2 agreement between histogram and fcn  
 /// @param hist 1D histogram 
 /// @param pdf function to return expectation value for each bin (integrated over each bin)
 /// @return chi^2
-double chisquare(histo_1D_t data, const std::function<double(double)>& fcn);
+double chisquare(histo_1D_t data, const Fcn1D& fcn);
 
 /// @brief computes p-value for chi-square. 
 /// @param chi2 chi^2 value returned by above fcn 

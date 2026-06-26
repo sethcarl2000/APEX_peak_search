@@ -3,6 +3,7 @@
 #include "log_likelihood.hpp"
 #include "fit_parameter.hpp"
 #include "bininfo.hpp"
+#include <newton_optimizer.hpp>
 
 //ROOT header
 #include <TAxis.h> 
@@ -41,18 +42,11 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
 {
     using Eigen::MatrixXd, Eigen::VectorXd; 
     
-    const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
+    double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
 
-    double scale  = (data.xmax - data.xmin)/2.;    
-    double center = (data.xmax + data.xmin)/2.;
-
-    //re-normalize the points (to make fit go a little easier)
-    for (auto& bin : data.bins) { 
-        bin.x = (bin.x - center)/scale;
-    }
-    data.xmax = +1.;
-    data.xmin = -1.; 
-
+    double x_scale  = (data.xmax - data.xmin)/2.;
+    double x_center = (data.xmax + data.xmin)/2.;  
+    
     //first, try to fit the polynomial using a chi-square fit. 
     MatrixXd A = MatrixXd::Zero(degree, degree);
     VectorXd B = VectorXd::Zero(degree);
@@ -64,8 +58,9 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
 
         double Xmu[degree]; 
 
+        double x = (bin.x - x_center)/x_scale; 
         Xmu[0] = 1.; 
-        for (int i=1; i<degree; i++) Xmu[i] = Xmu[i-1]*bin.x; 
+        for (int i=1; i<degree; i++) Xmu[i] = Xmu[i-1]*x; 
 
         for (int i=0; i<degree; i++) {
 
@@ -87,54 +82,25 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
         coeffs.emplace_back(fit_parameter_t{ .val = coeffs_vec[i], .name = Form("c%zi",i), .is_fixed = false }); 
     }
     //std::vector<double> coeffs( coeffs_vec.data(), coeffs_vec.data() + coeffs_vec.size() );
+    //now, let's 
+    ExponentialPoly poly({}, data.xmin, data.xmax); 
+    poly.SetParams(coeffs_vec); 
 
     //check for NaN
     if (coeffs.size() != (size_t)degree) { return FitResult<ExponentialPoly>::Fail(); }
 
-    //scale this coefficient to that we can *integrate* over each bin
-    double dx_scaled = 2./((double)data.bins.size());
-    coeffs[0].val += std::log( 1./dx_scaled );
+    //scale this coefficient to that we can *integrate* over each bin. 
+    coeffs[0].val += std::log( ((double)data.bins.size())/2. );
 
+    newton_optimizer(data, poly, coeffs); 
     
 #ifdef DEBUG
     std::cout << "coeffs: ";
     for (auto x : coeffs) std::cout << x << " "; 
     std::cout << "\n";
 #endif 
-
-
-#ifdef DEBUG
-    std::cout << "coeffs_descale: ";
-    for (auto x : coeffs_descale) std::cout << x << " "; 
-    std::cout << "\n";
-#endif
     
-    //now, we will find the max-likelihood estimator 
-    auto wrapper = [degree](double x, const double* par){ return ExponentialPoly::Eval(x,par,degree); };
-    
-    double nll = best_likelihood_fit(data, wrapper, coeffs); 
-
-    if (numbers::is_nan(nll)) { return FitResult<ExponentialPoly>::Fail(); } //*/ 
-
-    //remove this scaling for a moment
-    coeffs[0].val += -std::log( 1./dx_scaled );
-
-    //now, de-scale each exponent.s
-    std::vector<double> coeffs_descale(degree, 0.);
-
-    for (int i=0; i<degree; i++) {
-
-        double prefactor = coeffs[i].val / numbers::int_pow(scale, i);
-
-        for (int k=0; k<=i; k++) { 
-            coeffs_descale[k] 
-                += prefactor * numbers::n_choose_k(i, k) * numbers::int_pow(-center, i-k); 
-        }
-    }
-    coeffs_descale[0] += std::log( 1./dx );
-
-
-    return { ExponentialPoly{coeffs_descale}, Status::kSuccess }; 
+    return { poly, Status::kSuccess }; 
 }
 //______________________________________________________________________________________________________________________________
 

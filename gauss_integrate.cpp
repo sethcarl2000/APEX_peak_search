@@ -47,6 +47,29 @@ double gauss_integrate(const std::function<double(double)>& fcn, double xmin,dou
     return sum * scale; 
 }
 //___________________________________________________________________________________________________________________
+double gauss_integrate(const Fcn1D& fcn, double xmin,double xmax)
+{
+#ifdef DEBUG
+    std::printf("in <gauss_integrate>\n");
+#endif
+    double scale  = (xmax-xmin)/2.;
+    double center = (xmax+xmin)/2.; 
+
+    double sum =0.; 
+    for (int ix=0; ix<n_order; ix++) {
+        double x = scale*gauss_abscissa[ix] + center; 
+
+#ifdef DEBUG
+        std::printf("in <gauss_integrate>: calling fcn\n");
+#endif
+        sum += fcn(x) * gauss_weight[ix];
+    }
+    return sum * scale; 
+}
+//___________________________________________________________________________________________________________________
+//___________________________________________________________________________________________________________________
+//___________________________________________________________________________________________________________________
+//___________________________________________________________________________________________________________________
 double gauss_integrate(double (*fcn)(double,double), double xmin,double xmax, double ymin,double ymax)
 {
     double scale_x  = (xmax-xmin)/2.;

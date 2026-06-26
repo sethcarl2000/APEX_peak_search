@@ -1,7 +1,7 @@
 #ifndef peak_search_fit_exponential_poly_hpp
 #define peak_search_fit_exponential_poly_hpp
 
-#include "ExponentialPoly.hpp"
+#include <Fcn1D/ExponentialPoly.hpp>
 #include "bininfo.hpp"
 #include "FitResult.hpp"
 
