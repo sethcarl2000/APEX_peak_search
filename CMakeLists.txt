@@ -33,7 +33,6 @@ find_package(Eigen3 5.0 REQUIRED)
 #   Define sources and headers
 set(sources 
     legendre_polynomial.cpp
-    ExponentialPoly.cpp
     log_likelihood.cpp
     gauss_integrate.cpp
     fit_exponential_poly.cpp
@@ -42,22 +41,31 @@ set(sources
     best_likelihood_fit.cpp
     chisquare.cpp
     compute_Q0.cpp
+    newton_optimizer.cpp
+    # Fcn1D 
+    Fcn1D/Fcn1D.cpp
+    Fcn1D/ExponentialPoly.cpp
+    Fcn1D/LegendrePoly.cpp
 )
 
 set(headers 
     legendre_polynomial.hpp
-    ExponentialPoly.hpp
+    
     log_likelihood.hpp
     gauss_integrate.hpp
     fit_exponential_poly.hpp
     FitResult.hpp
-    pdf_fcn.hpp
     numbers.hpp 
     bininfo.hpp
     best_likelihood_fit.hpp
     chisquare.hpp
     fit_parameter.hpp
     compute_Q0.hpp
+    newton_optimizer.hpp
+    # Fcn1D 
+    Fcn1D/Fcn1D.hpp
+    Fcn1D/ExponentialPoly.hpp
+    Fcn1D/LegendrePoly.hpp
 )
 
 #---------------------------------------------------------
