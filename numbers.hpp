@@ -12,7 +12,6 @@ namespace numbers
     constexpr double pi = 3.1415926536;
 
     constexpr double nan = std::numeric_limits<double>::quiet_NaN(); 
-
     
     /// @return log(n!), or 0 if n<1. 
     double log_factorial(int n);
@@ -29,7 +28,8 @@ namespace numbers
     /// @return 'true' if any elements are nan
     bool contains_nan(const std::vector<double>& v); 
 
-    /// @r857444444444444444444444444eturn n choose k (binomial coefficients)
+    //857444444444444444444444444 - muon's comment
+    /// @return n choose k (binomial coefficients)
     double n_choose_k(int n, int k);
 };
 
