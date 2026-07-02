@@ -46,11 +46,12 @@ set(sources
     Fcn1D/Fcn1D.cpp
     Fcn1D/ExponentialPoly.cpp
     Fcn1D/LegendrePoly.cpp
+    Fcn1D/Gauss.cpp
+    Fcn1D/FcnSum.cpp
 )
 
 set(headers 
     legendre_polynomial.hpp
-    
     log_likelihood.hpp
     gauss_integrate.hpp
     fit_exponential_poly.hpp
@@ -66,6 +67,8 @@ set(headers
     Fcn1D/Fcn1D.hpp
     Fcn1D/ExponentialPoly.hpp
     Fcn1D/LegendrePoly.hpp
+    Fcn1D/Gauss.hpp
+    Fcn1D/FcnSum.hpp
 )
 
 #---------------------------------------------------------
