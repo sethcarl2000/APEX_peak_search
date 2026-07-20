@@ -2,6 +2,8 @@
 #include "../chisquare.hpp"
 #include "gauss_integrate.hpp"
 #include "compute_Q0.hpp"
+#include <Fcn1D/ExponentialPoly.hpp>
+#include <Fcn1D/GenFcn1D.hpp> 
 
 #include <TH1D.h>
 #include <TH2D.h>
@@ -83,6 +85,8 @@ int generate_gauss_Q0(const int n_experiments)
             auto tf11 = new TF1("hhh", fcn_dist, -range, +range, 0); 
             tf11->DrawCopy("SAME"); 
         }
+
+        
 
         auto fcn_expect_s_plus_b = (std::function<double(double,double,const double*)>)[&fcn_expect](double x, double mu, const double* par){
             return 

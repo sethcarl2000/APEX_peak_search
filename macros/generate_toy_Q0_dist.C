@@ -1,5 +1,5 @@
 
-#include "log_likelihood.hpp"
+#include "../log_likelihood.hpp"
 
 #include <TH1D.h>
 #include <TH2D.h>
