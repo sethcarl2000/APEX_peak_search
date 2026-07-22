@@ -17,6 +17,9 @@ public:
 
     LegendrePoly(const std::vector<double>& par={}, double x_min=-1., double x_max=+1.);
     
+    //copy constructor 
+    LegendrePoly(const LegendrePoly&) = default; 
+    
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //mandatory interface: 
 

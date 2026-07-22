@@ -14,6 +14,8 @@ private:
 public: 
 
     Gauss(double mu, double x0, double sigma);
+
+    Gauss(const Gauss&) = default; 
     
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //mandatory interface: 
