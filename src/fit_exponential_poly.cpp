@@ -15,6 +15,7 @@
 //stdlib headers
 #include <vector>
 #include <iostream>  
+#include <cstdio> 
 
 namespace {
     struct binval_t { double x, N; }; 
@@ -51,7 +52,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     MatrixXd A = MatrixXd::Zero(degree, degree);
     VectorXd B = VectorXd::Zero(degree);
 
-    for (const auto& bin : data.bins) {
+    for (auto& bin : data.bins) {
 
         //don't want to take the logarithm of 0! 
         if (bin.N <= 1e-6) continue; 
@@ -59,12 +60,13 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
         double Xmu[degree]; 
 
         double x = (bin.x - x_center)/x_scale; 
+
         Xmu[0] = 1.; 
         for (int i=1; i<degree; i++) Xmu[i] = Xmu[i-1]*x; 
 
         for (int i=0; i<degree; i++) {
 
-            B(i) += std::log( bin.N ) * Xmu[i];
+            B(i) += std::log( bin.N/dx ) * Xmu[i];
 
             for (int j=0; j<degree; j++) {
 
@@ -73,7 +75,8 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
         }
     }
     
-    //now, solve this system 
+    //now, solve this system.
+    //we call these coeffs 'scaled', cause the x-values were normalized to be on the interval x=[-1,+1] 
     VectorXd coeffs_vec = A.llt().solve(B); 
     
     std::vector<fit_parameter_t> coeffs; coeffs.reserve(coeffs_vec.size()); 
@@ -81,7 +84,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     for (size_t i=0; i<coeffs_vec.size(); i++) {
         coeffs.emplace_back(fit_parameter_t{ .val = coeffs_vec[i], .name = Form("c%zi",i), .is_fixed = false }); 
     }
-    //std::vector<double> coeffs( coeffs_vec.data(), coeffs_vec.data() + coeffs_vec.size() );
+    
     //now, let's 
     ExponentialPoly poly({}, data.xmin, data.xmax); 
     poly.SetParams(coeffs_vec); 
@@ -89,17 +92,34 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     //check for NaN
     if (coeffs.size() != (size_t)degree) { return FitResult<ExponentialPoly>::Fail(); }
 
-    //scale this coefficient to that we can *integrate* over each bin. 
-    coeffs[0].val += std::log( ((double)data.bins.size())/2. );
+    poly.SetParams(coeffs); 
 
+    //now, de-scale each exponent. (! update, for ExponentialPoly this is not necessary, as it is already done by ExponentialPoly)
+    /*
+    std::vector<double> coeffs_descale(degree, 0.);
+
+    for (int n=0; n<degree; n++) {
+
+        double prefactor = coeffs[n].val / numbers::int_pow(x_scale, n);
+
+        for (int k=0; k<=n; k++) { 
+            coeffs_descale[k] += prefactor * numbers::n_choose_k(n, k) * numbers::int_pow(-x_center, n-k); 
+        }
+    }
+    
+    poly.SetParams(coeffs_descale);     
+    */ 
+    
     newton_optimizer(data, poly, coeffs); 
-    
+
 #ifdef DEBUG
-    std::cout << "coeffs: ";
-    for (auto x : coeffs) std::cout << x << " "; 
-    std::cout << "\n";
+    int i=0; 
+    std::cout <<"<"<<__func__<">: final coeffs:\n"; 
+    for (auto& coeff : exp_poly.GetParams()) {
+        std::printf("   %3i : %f\n", i++, coeff); 
+    }
 #endif 
-    
+
     return { poly, Status::kSuccess }; 
 }
 //______________________________________________________________________________________________________________________________
