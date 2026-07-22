@@ -103,7 +103,7 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
             params[ind[i]].val += -dX(i);  
         }
         std::printf("<%s>: it %2i/%i, eta = %.4e, chi^2 = %.4e p(chi^2) = %.4e\n", __func__, 
-            it, 
+            it,max_iterations, 
             eta, 
             chi2, 
             ROOT::Math::chisquared_cdf(chi2, data.bins.size())
