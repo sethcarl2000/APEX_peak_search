@@ -11,7 +11,7 @@ namespace peak_search
 class FcnSum : public Fcn1D {
 private: 
 
-    std::unique_ptr<Fcn1D> fcnA{nullptr}, fcnB{nullptr}; 
+    Fcn1D *fcnA, *fcnB; 
 
     size_t n_pars_A{0}, n_pars_B{0}; 
 
