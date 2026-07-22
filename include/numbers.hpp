@@ -17,7 +17,15 @@ namespace numbers
     double log_factorial(int n);
 
     /// @return 'true' if arg is nan, false otherwise. 
-    inline bool is_nan(double x) { return x != x; }
+    template<typename T> inline bool is_nan(const T& val) { return val != val; }
+    
+    /// @return 'true' if any element in the vector is nan, false otherwise
+    template<typename T> inline bool vec_contains_nan(const std::vector<T>& vec) { 
+        for (const T& val : vec) { if (is_nan(val)) return true; }
+        return false; 
+    }
+    
+    
 
     /// @brief positive integer-power. 
     /// @param x value
