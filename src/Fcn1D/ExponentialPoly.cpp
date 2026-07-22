@@ -1,4 +1,4 @@
-#include "ExponentialPoly.hpp"
+#include "Fcn1D/ExponentialPoly.hpp"
 
 namespace peak_search
 {
