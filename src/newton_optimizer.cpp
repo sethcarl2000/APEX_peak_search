@@ -13,6 +13,8 @@
 #include <stdexcept> 
 #include <string> 
 #include <cmath> 
+#include <iostream> 
+#include <cstdio> 
 
 namespace peak_search 
 {
@@ -37,10 +39,24 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
     fcn.SetParams(params); 
 
     size_t n_mutable=0; 
-    std::vector<size_t> ind; ind.reserve(params.size()); 
-    for (size_t i=0; i<params.size(); i++) { if (!params[i].is_fixed) { ind.push_back(i); } }
+    std::vector<size_t> ind; ind.reserve(params.size());
+#ifdef DEBUG
+    std::printf("<%s> starting parameter list:\n", __func__);
+#endif 
 
-    if (n_mutable < 1) return 0.; 
+    for (size_t i=0; i<params.size(); i++) { 
+        auto& par = params[i];
+#ifdef DEBUG
+        std::printf("   %3zi - %5s | %-5s | %6f\n", i, (par.is_fixed ? "fixed" : "mut"), par.name.c_str(), par.val); 
+#endif
+        if (!par.is_fixed) { ind.push_back(i); }
+    }
+
+    n_mutable = ind.size(); 
+    if (n_mutable < 1) { 
+        std::printf("<%s>: no mutable params.\n", __func__);
+        return 0.; 
+    }
 
     double eta=0.; 
 
@@ -82,19 +98,41 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
                         = gauss_integrate([&ind,i,j,&fcn](double x){ return fcn.Di_Dj(x, ind[i],ind[j]); }, x0,x1); 
                 }
             }
-            
+
+            //check to see if there are any NAN-values in either set of derivatives 
+            if (numbers::vec_contains_nan(dL_dTi) || numbers::vec_contains_nan(dL_dTi_dTj)) {
+                
+                std::fprintf(stderr,
+                    "in <%s>: found derivative array that contains NaN. it=%i\n", __func__, it
+                );
+
+                std::cerr << "first derivative:\n";
+                for (size_t i=0; i<ind.size(); i++) {
+                    std::fprintf(stderr, "%+10.3e\n", dL_dTi[i]); 
+                }
+
+                std::cerr << "second derivative:\n"; 
+                for (size_t i=0; i<ind.size(); i++) {
+                    for (size_t j=0; j<ind.size(); j++) {
+                        std::fprintf(stderr, "%+10.3e", dL_dTi[i]); 
+                    
+                    } std::cerr << "\n";
+                }
+                return numbers::nan; 
+            }
+
+
             for (int i=0; i<ind.size(); i++) {
 
                 dEta(i) += arg*dL_dTi[i]; 
 
-                for (int j=i; j<n_mutable; j++) J(i,j) 
-                    += dL_dTi[i]*dL_dTi[j]*(1. - arg)/lambda_i
-                    +  arg*dL_dTi_dTj[i*n_mutable + j]; 
+                for (int j=i; j<n_mutable; j++) 
+                    J(i,j) += dL_dTi[i]*dL_dTi[j]*n_i/(lambda_i*lambda_i)  +  arg*dL_dTi_dTj[i*n_mutable + j]; 
             }
 
         }// for (const auto& bin : data.bins)
 
-        for (int i=1; i<n_mutable; i++) { for (int j=0; j<i; j++) J(j,i) = J(i,j); }
+        for (int i=1; i<n_mutable; i++) { for (int j=0; j<i; j++) J(i,j) = J(j,i); }
 
         VectorXd dX = J.llt().solve(dEta); 
 
@@ -102,15 +140,30 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
         for (size_t i=0; i<ind.size(); i++) {
             params[ind[i]].val += -dX(i);  
         }
+#ifdef DEBUG
         std::printf("<%s>: it %2i/%i, eta = %.4e, chi^2 = %.4e p(chi^2) = %.4e\n", __func__, 
             it,max_iterations, 
             eta, 
             chi2, 
             ROOT::Math::chisquared_cdf(chi2, data.bins.size())
         );
+#endif
 
         fcn.SetParams(params); 
     }
+    
+#ifdef DEBUG
+    std::printf("<%s> ending parameter list:\n", __func__);
+    for (size_t i=0; i<params.size(); i++) { 
+        
+        auto& par = params[i];
+
+        std::printf("   %3zi - %5s | %-5s | %6f\n", i, (par.is_fixed ? "fixed" : "mut"), par.name.c_str(), par.val); 
+
+        if (!par.is_fixed) { ind.push_back(i); }
+    }
+#endif
+
     return eta; 
 } 
 
