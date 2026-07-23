@@ -16,6 +16,10 @@
 #include <iostream> 
 #include <cstdio> 
 
+#ifdef DEBUG
+#define DEBUG_NEWTON
+#endif
+
 namespace peak_search 
 {
 
@@ -40,13 +44,13 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
 
     size_t n_mutable=0; 
     std::vector<size_t> ind; ind.reserve(params.size());
-#ifdef DEBUG
+#ifdef DEBUG_NEWTON
     std::printf("<%s> starting parameter list:\n", __func__);
 #endif 
 
     for (size_t i=0; i<params.size(); i++) { 
         auto& par = params[i];
-#ifdef DEBUG
+#ifdef DEBUG_NEWTON
         std::printf("   %3zi - %5s | %-5s | %6f\n", i, (par.is_fixed ? "fixed" : "mut"), par.name.c_str(), par.val); 
 #endif
         if (!par.is_fixed) { ind.push_back(i); }
@@ -140,7 +144,7 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
         for (size_t i=0; i<ind.size(); i++) {
             params[ind[i]].val += -dX(i);  
         }
-#ifdef DEBUG
+#ifdef DEBUG_NEWTON
         std::printf("<%s>: it %2i/%i, eta = %.4e, chi^2 = %.4e p(chi^2) = %.4e\n", __func__, 
             it,max_iterations, 
             eta, 
@@ -152,7 +156,7 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
         fcn.SetParams(params); 
     }
     
-#ifdef DEBUG
+#ifdef DEBUG_NEWTON
     std::printf("<%s> ending parameter list:\n", __func__);
     for (size_t i=0; i<params.size(); i++) { 
         

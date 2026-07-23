@@ -1,27 +1,11 @@
 #---------------------------------------------------------
 #   I copied most of this CMakeLists.txt from: https://cliutils.gitlab.io/modern-cmake/examples/root-dict/README.html 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.16)
 
 #---------------------------------------------------------
 #   Define the project 
 project(ApexPeakSearchLibrary VERSION 0.1
         LANGUAGES CXX)  
-
-#---------------------------------------------------------
-#   Define this preprocessor macro to enable debug statements 
-option(DEBUG "Enable debug printing" OFF)
-if (DEBUG)
-    add_compile_definitions(DEBUG)
-endif()
-
-#---------------------------------------------------------
-#   Which include directories to use. 
-set(CMAKE_CXX_STANDARD
-    20
-    CACHE STRING "C++ standard to use")
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_PLATFORM_INDEPENDENT_CODE ON)
 
 #---------------------------------------------------------
 #   Find ROOT (necessary)
@@ -32,52 +16,73 @@ find_package(Eigen3 5.0 REQUIRED)
 #---------------------------------------------------------
 #   Define sources and headers
 set(sources 
-    legendre_polynomial.cpp
-    log_likelihood.cpp
-    gauss_integrate.cpp
-    fit_exponential_poly.cpp
-    numbers.cpp
-    bininfo.cpp
-    best_likelihood_fit.cpp
-    chisquare.cpp
-    compute_Q0.cpp
-    newton_optimizer.cpp
+    "src/legendre_polynomial.cpp"
+    "src/log_likelihood.cpp"
+    "src/gauss_integrate.cpp"
+    "src/fit_exponential_poly.cpp"
+    "src/numbers.cpp"
+    "src/bininfo.cpp"
+    "src/best_likelihood_fit.cpp"
+    "src/chisquare.cpp"
+    "src/compute_Q0.cpp"
+    "src/newton_optimizer.cpp"
     # Fcn1D 
-    Fcn1D/Fcn1D.cpp
-    Fcn1D/ExponentialPoly.cpp
-    Fcn1D/LegendrePoly.cpp
-    Fcn1D/Gauss.cpp
-    Fcn1D/FcnSum.cpp
+    "src/Fcn1D/Fcn1D.cpp"
+    "src/Fcn1D/ExponentialPoly.cpp"
+    "src/Fcn1D/LegendrePoly.cpp"
+    "src/Fcn1D/Gauss.cpp"
+    "src/Fcn1D/FcnSum.cpp"
 )
 
 set(headers 
-    legendre_polynomial.hpp
-    log_likelihood.hpp
-    gauss_integrate.hpp
-    fit_exponential_poly.hpp
-    FitResult.hpp
-    numbers.hpp 
-    bininfo.hpp
-    best_likelihood_fit.hpp
-    chisquare.hpp
-    fit_parameter.hpp
-    compute_Q0.hpp
-    newton_optimizer.hpp
+    "include/legendre_polynomial.hpp"
+    "include/log_likelihood.hpp"
+    "include/gauss_integrate.hpp"
+    "include/fit_exponential_poly.hpp"
+    "include/FitResult.hpp"
+    "include/numbers.hpp" 
+    "include/bininfo.hpp"
+    "include/best_likelihood_fit.hpp"
+    "include/chisquare.hpp"
+    "include/fit_parameter.hpp"
+    "include/compute_Q0.hpp"
+    "include/newton_optimizer.hpp"
     # Fcn1D 
-    Fcn1D/Fcn1D.hpp
-    Fcn1D/ExponentialPoly.hpp
-    Fcn1D/LegendrePoly.hpp
-    Fcn1D/Gauss.hpp
-    Fcn1D/FcnSum.hpp
+    "include/Fcn1D/Fcn1D.hpp"
+    "include/Fcn1D/ExponentialPoly.hpp"
+    "include/Fcn1D/LegendrePoly.hpp"
+    "include/Fcn1D/Gauss.hpp"
+    "include/Fcn1D/FcnSum.hpp"
 )
 
 #---------------------------------------------------------
 #   Generate the ROOT dictionary
-root_generate_dictionary(G__ApexPeakSearch ${headers} LINKDEF LinkDef.h)
+#root_generate_dictionary(G__ApexPeakSearch ${headers} LINKDEF LinkDef.h)
 
 #---------------------------------------------------------
 #   Add Libraries
-add_library(ApexPeakSearch SHARED ${sources} ${headers} G__ApexPeakSearch.cxx)
-target_include_directories(ApexPeakSearch PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+
+#
+#---------------------------------------------------------
+#   Define this preprocessor macro to enable debug statements 
+
+
+add_library(ApexPeakSearch SHARED ${sources} )# G__ApexPeakSearch.cxx)
+
+#-----------------------------------------------------------------------
+#   Add some compile options
+option(DEBUG "Enable debug printing in all code" OFF)
+if (DEBUG)
+    target_compile_definitions(ApexPeakSearch PRIVATE DEBUG)
+endif()
+#
+option(DEBUG_NEWTON "Debug printing for 'newton_optimizer'" OFF)
+if (DEBUG_NEWTON)
+    target_compile_definitions(ApexPeakSearch PRIVATE DEBUG_NEWTON)
+endif()
+
+
+target_include_directories(ApexPeakSearch PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(ApexPeakSearch PUBLIC ROOT::Core Eigen3::Eigen)
 
+root_generate_dictionary(G__ApexPeakSearch ${headers} LINKDEF LinkDef.h MODULE ApexPeakSearch)
