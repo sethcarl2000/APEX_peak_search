@@ -16,7 +16,7 @@ namespace peak_search
 /// @param params parameters of the function to use
 /// @param max_iterations maximum number of iterations to execute
 /// @return returns the 'eta' (NLL without combinatoric factor)
-double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations=10); 
+double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations=8); 
 
 };
 
