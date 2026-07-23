@@ -32,6 +32,7 @@ set(sources
     "src/Fcn1D/LegendrePoly.cpp"
     "src/Fcn1D/Gauss.cpp"
     "src/Fcn1D/FcnSum.cpp"
+    "src/copy_subhist.cpp"
 )
 
 set(headers 
@@ -53,6 +54,7 @@ set(headers
     "include/Fcn1D/LegendrePoly.hpp"
     "include/Fcn1D/Gauss.hpp"
     "include/Fcn1D/FcnSum.hpp"
+    "include/copy_subhist.hpp"
 )
 
 #---------------------------------------------------------
