@@ -30,6 +30,33 @@ double compute_Q0(TH1D* hist, Fcn1D& fcn, std::vector<double>& nuissance_params)
     return compute_Q0(data, fcn, nuissance_params);
 }
 //________________________________________________________________________________________________________________________________________
+double compute_Q0(histo_1D_t data, Fcn1D& fcn)
+{
+    //first, compute the best fit
+    auto& coeffs = fcn.GetParams(); 
+    std::vector<fit_parameter_t> fit_params; fit_params.reserve(coeffs.size());
+
+    fit_params.push_back({ .val=coeffs[0], .name="mu", .is_fixed=false});
+    for (size_t i=1; i<fcn.GetDoF(); i++) {
+        fit_params.push_back({ .val=coeffs[i], .name=Form("param_%zi",i), .is_fixed=false});
+    }
+
+    auto& param_mu = fit_params[0]; 
+    
+    //now, fix mu=0, and find the NLL
+    param_mu.val =0.; 
+    param_mu.is_fixed = true; 
+    double NLL_0      = newton_optimizer(data, fcn, fit_params);
+    
+    param_mu.is_fixed = false; 
+    double NLL_best   = newton_optimizer(data, fcn, fit_params); 
+
+    //return the computed value of Q0 
+    double Q0 = NLL_0 - NLL_best; 
+    if (param_mu.val < 0) { Q0 *= -2.; } else { Q0 *= +2.; }
+    return Q0; 
+}
+//________________________________________________________________________________________________________________________________________
 double compute_Q0(histo_1D_t data, Fcn1D& fcn, std::vector<double>& nuissance_params)
 {
     //check to make sure that the fcn and params match

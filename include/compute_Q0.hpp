@@ -25,6 +25,11 @@ double compute_Q0(TH1D* hist, Fcn1D& fcn, std::vector<double>& nuissance_params)
 /// @return Q0 statistic (representing degree of agreement with no-signal hypothesis)
 double compute_Q0(histo_1D_t data, Fcn1D& fcn, std::vector<double>& nuissance_params); 
 
+/// @brief Compute the 'Q0' statistic 
+/// @param hist histogram representing data 
+/// @param fcn expecation value for each bin 
+/// @return Q0 statistic (representing degree of agreement with no-signal hypothesis)
+double compute_Q0(histo_1D_t data, Fcn1D& fcn); 
 
 /// @brief returns the p-value for a computed Q0
 /// @param Q0 a computed value of 'Q0' 
