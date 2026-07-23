@@ -38,6 +38,9 @@ public:
     /// @return d/d\theta_i * d/d\theta_j * f(x)
     double Di_Dj (double, int,int) const override; 
 
+    inline void Set_x0(double x) { x0=x; }
+    inline void Set_mu(double m) { par[0]=m; }
+
 }; 
 
 }; 
