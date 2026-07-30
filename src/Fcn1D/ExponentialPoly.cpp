@@ -29,14 +29,12 @@ double ExponentialPoly::operator()(double x) const
 //_______________________________________________________________________________________________
 double ExponentialPoly::Di(double x, int i) const 
 {
-    x = (x - x_center)/x_scale; 
-    return (*this)(x) * numbers::int_pow(x, i); 
+    return (*this)(x) * numbers::int_pow((x - x_center)/x_scale, i); 
 }
 //_______________________________________________________________________________________________
 double ExponentialPoly::Di_Dj(double x, int i, int j) const 
 {
-    x = (x - x_center)/x_scale; 
-    return (*this)(x) * numbers::int_pow(x, i) * numbers::int_pow(x, j); 
+    return (*this)(x) * numbers::int_pow((x - x_center)/x_scale, i+j);
 }
 //_______________________________________________________________________________________________
 
