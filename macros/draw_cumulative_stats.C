@@ -29,10 +29,11 @@ int draw_cumulative_stats(std::string path_infile, const double p_coinc_eval=0.0
 
     auto xax = hist->GetXaxis(); 
 
-    std::vector<double> pts_sum, pts_sum_coinc, pts_p; 
+    std::vector<double> pts_sum, pts_sum_coinc, pts_p, pts_frac_coinc; 
     pts_sum.reserve(xax->GetNbins());  
     pts_sum_coinc.reserve(xax->GetNbins()); 
     pts_p.reserve(xax->GetNbins()); 
+    pts_frac_coinc.reserve(xax->GetNbins()); 
 
     //start at the end
     double cum =0.; 
@@ -43,18 +44,15 @@ int draw_cumulative_stats(std::string path_infile, const double p_coinc_eval=0.0
         double p_coinc = xax->GetBinCenter(bx); 
         
         cum += stats; 
+        
+        if (cum < 1.) continue; 
+
         cum_coinc += stats * p_coinc; 
 
         pts_p  .push_back( p_coinc );
         pts_sum.push_back( cum );
         pts_sum_coinc.push_back( cum_coinc );
-    }
-
-    auto pts_p_coinc = pts_sum_coinc; 
-
-    //scale the sum of all coinc events 
-    for (size_t i=0; i<pts_sum.size(); i++) { 
-        pts_p_coinc[i] *= 1./pts_sum[i]; 
+        pts_frac_coinc.push_back( cum_coinc/cum ); 
     }
 
     auto graph_sum = new TGraph(
@@ -87,20 +85,20 @@ int draw_cumulative_stats(std::string path_infile, const double p_coinc_eval=0.0
     legend->Draw(); 
 
 
-    auto graph_p_coinc = new TGraph(
+    auto graph_frac_coinc = new TGraph(
         pts_p.size(), 
         pts_p.data(), 
-        pts_p_coinc.data()
+        pts_frac_coinc.data()
     ); 
-    graph_p_coinc->SetTitle("fraction of coinc. events;p_coinc;fraction of stats which are coinc"); 
+    graph_frac_coinc->SetTitle("fraction of coinc. events;p_coinc;fraction of stats which are coinc"); 
     
     new TCanvas; 
-    graph_p_coinc->SetMinimum(0.);
-    graph_p_coinc->SetMaximum(1.1); 
-    graph_p_coinc->Draw(); 
+    graph_frac_coinc->SetMinimum(0.);
+    graph_frac_coinc->SetMaximum(1.1); 
+    graph_frac_coinc->Draw(); 
 
 
-    graph_p_coinc->Eval(0.05); 
+    graph_frac_coinc->Eval(0.05); 
     
     std::printf(
         "evaluated cut: (p_coinc > %.3f)\n"
@@ -109,8 +107,73 @@ int draw_cumulative_stats(std::string path_infile, const double p_coinc_eval=0.0
         p_coinc_eval, 
         graph_sum->Eval(p_coinc_eval),
         graph_sum_coinc->Eval(p_coinc_eval),
-        graph_p_coinc->Eval(p_coinc_eval)*100.
+        graph_frac_coinc->Eval(p_coinc_eval)*100.
     );
+     
+    
+
+    std::vector<double> rev_sum, rev_sum_coinc, rev_p, rev_frac_coinc; 
+    rev_sum.reserve(xax->GetNbins());  
+    rev_sum_coinc.reserve(xax->GetNbins()); 
+    rev_p.reserve(xax->GetNbins()); 
+    rev_frac_coinc.reserve(xax->GetNbins()); 
+
+
+    //start at the end
+    cum =0.; 
+    cum_coinc =0.; 
+    for (int bx=1; bx<=xax->GetNbins(); bx++) {
+
+        double stats   = hist->GetBinContent(bx); 
         
+        if (stats <= 1.) continue; 
+        
+        double p_coinc = xax->GetBinCenter(bx); 
+        
+        cum += stats; 
+        
+        cum_coinc += stats * p_coinc; 
+
+        rev_p  .push_back( p_coinc );
+        rev_sum.push_back( cum );
+        rev_sum_coinc.push_back( cum_coinc );
+        rev_frac_coinc.push_back( cum_coinc/cum ); 
+    }
+
+
+    graph_sum = new TGraph(
+        rev_p.size(), 
+        rev_p.data(), 
+        rev_sum.data()
+    ); 
+    graph_sum->SetMaximum(cum*1.1);
+    graph_sum->SetMinimum(0.);
+
+    graph_sum_coinc = new TGraph(
+        rev_p.size(), 
+        rev_p.data(), 
+        rev_sum_coinc.data()
+    ); 
+    graph_sum->SetTitle("N. stats < p_coinc;p_coinc;N. stats >= p_coinc"); 
+    
+    graph_sum->SetLineColor(kBlack);
+    graph_sum->SetLineWidth(2);
+
+    graph_sum_coinc->SetLineColor(kRed);
+    graph_sum_coinc->SetLineWidth(2);
+    
+    new TCanvas; 
+    graph_sum->Draw(); 
+    graph_sum_coinc->Draw("SAME");
+
+    legend = new TLegend;
+    legend->AddEntry(graph_sum, "All stats");
+    legend->AddEntry(graph_sum_coinc, "Coinc");
+
+    legend->Draw(); 
+
+
+
+
     return 0; 
 }
