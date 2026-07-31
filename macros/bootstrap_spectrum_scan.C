@@ -61,6 +61,16 @@ double GetSigma(double m);
 /// @return formatted progress bar string
 std::string progress_bar(double progress, int n_steps=100); 
 
+template<typename T> T* local_object_copy(TObject* obj, size_t t)
+{
+    const char* new_obj_name = Form("%s_t%zi",obj->GetName(),t); 
+    auto cpy = dynamic_cast<T*>(obj->Clone(new_obj_name)); 
+    cpy->SetBit(kMustCleanup); 
+    cpy->ResetBit(kCanDelete);
+    cpy->SetDirectory(0); 
+    return cpy; 
+}
+
 
 void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::string histogram_name="h_m")
 {   
@@ -106,8 +116,11 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
     gStyle->SetOptStat(0); 
     c_fit->DivideRatios(1,2, {1.}, {0.25, 0.75}, 0.00,0.00); 
     
-    const double max_signal_events = 5e3; 
-    auto hist_S = new TH2D("h_signal", "N. Best-fit signal events S(mu);S(mu);", 200, xmin, xmax, 200, -max_signal_events, max_signal_events); 
+    const double max_signal_events = 40e3; 
+    auto hist_S = new TH2D("h_signal", "Best-fit signal parameter '#mu' vs m;best-fit #mu;m (MeV)", 
+        n_steps/4, m_min, m_max, 
+        100, -max_signal_events, max_signal_events
+    ); 
 
     auto c_fit_hist = c_fit->cd(2);
     c_fit_hist->SetTopMargin(0.);  
@@ -141,23 +154,15 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
             auto t_this = t; 
 
-            auto make_local_hist = [t](TH1D* hist) {
-                const char* new_hist_name = Form("%s_t%zi",hist->GetName(),t); 
-                auto hist_cpy = dynamic_cast<TH1D*>(hist->Clone(new_hist_name)); 
-                hist_cpy->SetBit(kMustCleanup); 
-                hist_cpy->ResetBit(kCanDelete);
-                hist_cpy->SetDirectory(0); 
-                return hist_cpy; 
-            }; 
-
             //make a copy of the histogram.
             //it may seem dumb to need a mutex for a read operation, but we can't gurantee that the input histogram
             // is 'const' for this operation, thus this headache. 
             read_mutex.lock(); 
             auto data = peak_search::copy_1D_hist(hist); 
-            TH1D* h_pQ0_t    = make_local_hist(hist_pQ0); 
-            TH1D* h_sqrtQ0_t = make_local_hist(hist_sqrtQ0); 
-            TH1D* h_t        = make_local_hist(hist); 
+            auto h_pQ0_t    = local_object_copy<TH1D>(hist_pQ0, t_this); 
+            auto h_sqrtQ0_t = local_object_copy<TH1D>(hist_sqrtQ0, t_this); 
+            auto h_t        = local_object_copy<TH1D>(hist, t_this); 
+            auto h_S_t      = local_object_copy<TH2D>(hist_S, t_this); 
             read_mutex.unlock(); 
 
             TRandom3 rand_t; 
@@ -180,7 +185,7 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                 }
                 read_mutex.unlock(); 
 
-                TH1D* h_scan = make_local_hist(h_t); 
+                auto h_scan = local_object_copy<TH1D>(h_t, t_this); 
 
                 //bootstrap-resample each bin
                 const int n_bins = h_scan->GetXaxis()->GetNbins(); 
@@ -232,8 +237,12 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
                     double Z = (Q0>0.?+1.:-1.) * std::sqrt( std::fabs(Q0) ); 
 
+                    // get the 'mu' signal parameter
+                    double mu = fcn_s_plus_b.GetParams()[0]; 
+
                     h_pQ0_t->Fill( pQ0 ); 
                     h_sqrtQ0_t->Fill( Z );  
+                    h_S_t->Fill( x0, mu ); 
                     
                     gaussian_fcn.Set_x0(x0);
                     gaussian_fcn.Set_mu(0.);
@@ -241,23 +250,37 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                 } // loop over all choices of 'm' 
                 ++scans_completed_t;
             } // loop over all scans
-        
-            auto cpy_hist = [](TH1D* source, TH1D* target) {
+            
+            /// Copy contents of one TH1D into another
+            auto cpy_hist_1d = [](TH1D* source, TH1D* target) {
                 auto xax = source->GetXaxis(); 
                 for (int bin=1; bin<=xax->GetNbins(); bin++) {
                     target->Fill( xax->GetBinCenter(bin), source->GetBinContent(bin) );
                 }
             };
 
+            /// Copy contents of one TH2D into another 
+            auto cpy_hist_2d = [](TH2D* source, TH2D* target) {
+                auto xax = source->GetXaxis(); 
+                auto yax = source->GetYaxis(); 
+                for (int bx=1; bx<=xax->GetNbins(); bx++) {
+                    for (int by=1; by<=yax->GetNbins(); by++) {
+                        target->Fill( xax->GetBinCenter(bx), yax->GetBinCenter(by), source->GetBinContent(bx, by) );
+                    }
+                }    
+            };
+
             write_mutex.lock();
             //if (VERBOSE >= 1) std::printf("thread %2zi/%zi done with all scans.\n", t+1, n_threads); 
-            cpy_hist(h_pQ0_t, hist_pQ0);
-            cpy_hist(h_sqrtQ0_t, hist_sqrtQ0); 
+            cpy_hist_1d(h_pQ0_t, hist_pQ0);
+            cpy_hist_1d(h_sqrtQ0_t, hist_sqrtQ0); 
+            cpy_hist_2d(h_S_t, hist_S); 
             write_mutex.unlock(); 
             
             delete h_pQ0_t; 
             delete h_sqrtQ0_t;
             delete h_t; 
+            delete h_S_t; 
         }); 
     }
     for (auto& t : threads) t.join(); 
@@ -278,6 +301,9 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
     new TCanvas; 
     reset_bin_errors(hist_sqrtQ0); 
     hist_sqrtQ0->Draw("HIST, E"); 
+
+    new TCanvas; 
+    hist_S->Draw("col"); 
 
     return; 
 }
