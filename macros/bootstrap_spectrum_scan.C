@@ -174,6 +174,10 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                     read_mutex.unlock(); 
                     break; 
                 }
+                if (VERBOSE == 1) {
+                    //std::printf("thread %2zi/%zi performing scan %zi (%zi) (%4.1f%%)\n", t_this+1,n_threads, scans_completed_t+1, scans_scheduled, 100.*((double)scans_scheduled)/((double)n_scans));
+                    std::cout << "\r" << progress_bar(((double)scans_scheduled)/((double)n_scans), 100) << std::flush; 
+                }
                 read_mutex.unlock(); 
 
                 TH1D* h_scan = make_local_hist(h_t); 
@@ -182,13 +186,6 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                 const int n_bins = h_scan->GetXaxis()->GetNbins(); 
                 for (int bin=1; bin<=n_bins; bin++) {
                     h_scan->SetBinContent(bin, rand_t.PoissonD(h_scan->GetBinContent(bin))); 
-                }
-
-                if (VERBOSE == 1) {
-                    write_mutex.lock();
-                    //std::printf("thread %2zi/%zi performing scan %zi (%zi) (%4.1f%%)\n", t_this+1,n_threads, scans_completed_t+1, scans_scheduled, 100.*((double)scans_scheduled)/((double)n_scans));
-                    std::cout << "\r" << progress_bar(((double)scans_scheduled)/((double)n_scans), 100) << std::flush; 
-                    write_mutex.unlock(); 
                 }
 
                 double x0 = m_min - (m_max - m_min)/((double)n_steps-1);
