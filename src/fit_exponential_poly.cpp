@@ -110,7 +110,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     poly.SetParams(coeffs_descale);     
     */ 
     
-    newton_optimizer(data, poly, coeffs); 
+    double eta = newton_optimizer(data, poly, coeffs); 
 
 #ifdef DEBUG
     int i=0; 
@@ -119,6 +119,12 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
         std::printf("   %3i : %f\n", i++, coeff); 
     }
 #endif 
+
+    //check for NaN vals. 
+    if (numbers::is_nan(eta) || numbers::contains_nan(poly.GetParams())) {
+        Error(__func__, "Nan value encountered in newton opimization step.");
+        return FitResult<ExponentialPoly>::Fail(); 
+    }
 
     return { poly, Status::kSuccess }; 
 }
