@@ -4,6 +4,7 @@
 #include <bininfo.hpp>
 #include <copy_subhist.hpp>
 #include <fit_exponential_poly.hpp>
+#include <fit_exponential_legendre.hpp>
 #include <Fcn1D/Gauss.hpp>
 #include <Fcn1D/FcnSum.hpp>
 #include <newton_optimizer.hpp> 
@@ -213,7 +214,9 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                         }
                     }
 
-                    auto exp_poly_result = peak_search::fit_exponential_poly(sub_data, 5);
+                    auto exp_poly_result = peak_search::fit_exponential_legendre(sub_data, 4);
+
+                    //auto r2 = peak_search::fit_exponential_legendre(sub_data, 4); 
 
                     if (!exp_poly_result) {
                         Warning(__func__, "Poly. background fit for x0=%.3f failed.", x0); 
@@ -319,7 +322,7 @@ std::string progress_bar(double progress, int n_ticks) {
     double n_steps_d = (double)n_ticks;
     int n_ticks_full = ((double)n_ticks)*progress;
 
-    for (int i=0; i<n_ticks; i++) { oss << (i<=n_ticks_full ? "#" : " "); }
+    for (int i=0; i<n_ticks; i++) { oss << (i<=n_ticks_full ? "=" : " "); }
 
     oss << Form("]    %4.1f%%", progress*100.); 
     return oss.str(); 
