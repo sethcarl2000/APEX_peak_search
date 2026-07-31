@@ -47,9 +47,18 @@ double compute_Q0(histo_1D_t data, Fcn1D& fcn)
     param_mu.val =0.; 
     param_mu.is_fixed = true; 
     double NLL_0      = newton_optimizer(data, fcn, fit_params);
-    
+
+    if (numbers::is_nan(NLL_0)) {
+        Error(__func__, "NLL for mu=0 test case is null (newton-optimizer step failed)."); 
+        return numbers::nan; 
+    }
+
     param_mu.is_fixed = false; 
     double NLL_best   = newton_optimizer(data, fcn, fit_params); 
+    if (numbers::is_nan(NLL_best)) {
+        Error(__func__, "NLL for mu=best-fit test case is nan (newton-optimizer step failed)."); 
+        return numbers::nan; 
+    }
 
     //return the computed value of Q0 
     double Q0 = NLL_0 - NLL_best; 
