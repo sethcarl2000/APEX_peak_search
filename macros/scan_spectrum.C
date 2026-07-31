@@ -4,6 +4,7 @@
 #include <bininfo.hpp>
 #include <copy_subhist.hpp>
 #include <fit_exponential_poly.hpp>
+#include <fit_exponential_legendre.hpp>
 #include <Fcn1D/Gauss.hpp>
 #include <Fcn1D/FcnSum.hpp>
 #include <newton_optimizer.hpp> 
@@ -21,6 +22,8 @@
 #include <TFile.h>
 #include <TList.h> 
 #include <TObject.h> 
+#include <TPad.h> 
+#include <TStyle.h> 
 //stdlib headers
 #include <cstdio> 
 #include <functional> 
@@ -29,7 +32,7 @@
 #include <thread> 
 #include <stdexcept> 
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 //this manages our temporary, drawn objects so that each new frame in a gif can have fresh objects. 
 class DrawnObjectMgr {
@@ -47,6 +50,9 @@ public:
     inline void Reset() { fDrawnObjects.Delete(); }
 }; 
 
+//get the mass resolution as a fcn of sigma
+double GetSigma(double m); 
+
 void scan_spectrum(std::string file_path, std::string output_gif="", std::string histogram_name="h_m")
 {   
     //if the user provided a path, then make a gif. 
@@ -54,11 +60,9 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
 
     double m_min{150}, m_max{270};
     double sigma=1.; 
-    int n_steps=200; 
+    int n_steps=400; 
 
     double xmin{140.}, xmax{280};
-    const int n_bins = (int)(xmax-xmin)/0.5;
-
     double window_size = sigma*7.; 
 
     //cx 03.22222222222222222222 
@@ -93,18 +97,26 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
     DrawnObjectMgr draw_mgr; 
 
     auto c_fit = new TCanvas; 
-
+    gStyle->SetOptStat(0); 
+    c_fit->DivideRatios(1,2, {1.}, {0.25, 0.75}, 0.00,0.00); 
+    
+    auto c_fit_hist = c_fit->cd(2);
+    c_fit_hist->SetTopMargin(0.);  
     hist->GetYaxis()->SetRangeUser(0., hist->GetMaximum()*1.1); 
     hist->Draw("E"); 
+
+    //this histogram will track the dist. of p(Q0). 
+    auto hist_pQ0 = new TH1D("h_pQ0", "Dist. of p(Q0);p(Q0);", 50, 0., 1.); 
+
 
     std::cout << "done.\n" << std::flush; 
 
     const double dx = (xmax - xmin)/((double)hist->GetXaxis()->GetNbins()); 
     
-    std::vector<double> pts_x0, pts_mu, pts_sqrtQ0, pts_pQ0;
+    std::vector<double> pts_x0, pts_S, pts_sqrtQ0, pts_pQ0;
 
     pts_x0.reserve(n_steps);
-    pts_mu.reserve(n_steps);
+    pts_S.reserve(n_steps);
     pts_sqrtQ0.reserve(n_steps);
     pts_pQ0.reserve(n_steps);
 
@@ -128,7 +140,7 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
             }
         }
 
-        auto exp_poly_result = peak_search::fit_exponential_poly(sub_data, 3);
+        auto exp_poly_result = peak_search::fit_exponential_legendre(sub_data, 4);
 
         if (!exp_poly_result) {
             Warning(__func__, "Poly. background fit for x0=%.3f failed.", x0); 
@@ -183,11 +195,14 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
         }
 
         pts_x0      .emplace_back( x0 ); 
-        pts_mu      .emplace_back( fcn_s_plus_b.GetParams()[0] ); 
+        pts_S       .emplace_back( fcn_s_plus_b.GetParams()[0] * GetSigma(x0) * 2.50662827463 ); 
         pts_sqrtQ0  .emplace_back( (Q0>0.?+1.:-1.) * std::sqrt( std::fabs(Q0) ) ); 
-        pts_pQ0     .emplace_back( std::log10(pQ0) ); 
+        pts_pQ0     .emplace_back( pQ0 ); 
 
-        std::printf(" x0=%.2f,  mu=%.1f, sqrt(Q0)=%.2f\n", x0, pts_mu[i_step], pts_sqrtQ0[i_step]); 
+        hist_pQ0->Fill( pQ0 ); 
+
+        if (VERBOSE >= 1)
+            std::printf(" x0=%.2f,  S(mu)=%.1f, sqrt(Q0)=%.2f\n", x0, pts_S[i_step], pts_sqrtQ0[i_step]); 
 
         
         gaussian_fcn.Set_x0(x0);
@@ -198,9 +213,10 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
     TLine* line; 
 
     // 'mu' graph
-    new TCanvas;
-    graph = new TGraph(n_steps, pts_x0.data(), pts_mu.data()); 
-    graph->SetTitle("Best-fit mu vs. x0;x0;best-fit mu"); 
+    auto c_fit_graph = c_fit->cd(1); 
+    c_fit_graph->SetBottomMargin(0.); 
+    graph = new TGraph(n_steps, pts_x0.data(), pts_S.data());  
+    graph->SetTitle("Best-fit S(mu) vs. m;m;best-fit S(mu)"); 
     graph->Draw(); 
 
     line = new TLine(pts_x0.front(),0., pts_x0.back(),0.); 
@@ -222,8 +238,17 @@ void scan_spectrum(std::string file_path, std::string output_gif="", std::string
     // 'pQ0' graph
     new TCanvas; 
     graph = new TGraph(n_steps, pts_x0.data(), pts_pQ0.data()); 
-    graph->SetTitle("log_{10} p(Q0) vs. x0;x0;log_{10} p(Q0)"); 
+    graph->SetTitle(" p(Q0) vs. x0;x0;log_{10} p(Q0)"); 
     graph->Draw(); 
+    gPad->SetLogy(1); 
+
+    new TCanvas;
+    hist_pQ0->SetMinimum(0.); hist_pQ0->SetMaximum( hist_pQ0->GetMaximum()*1.2 ); 
+    hist_pQ0->Draw(); 
 
     return; 
+}
+
+double GetSigma(double m) {
+    return 1.; 
 }
