@@ -32,6 +32,7 @@
 #include <stdexcept> 
 #include <thread> 
 #include <mutex> 
+#include <sstream> 
 
 #define VERBOSE 1
 
@@ -54,6 +55,11 @@ public:
 //get the mass resolution as a fcn of sigma
 double GetSigma(double m); 
 
+/// @brief Draw progress bar 
+/// @param progress progress amount (in range [0-1])
+/// @param n_ticks number of 'ticks' to drawin the progress bar
+/// @return formatted progress bar string
+std::string progress_bar(double progress, int n_steps=100); 
 
 
 void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::string histogram_name="h_m")
@@ -133,6 +139,8 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
         threads.emplace_back([&]{
 
+            auto t_this = t; 
+
             auto make_local_hist = [t](TH1D* hist) {
                 const char* new_hist_name = Form("%s_t%zi",hist->GetName(),t); 
                 auto hist_cpy = dynamic_cast<TH1D*>(hist->Clone(new_hist_name)); 
@@ -156,10 +164,17 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
             //randomly re-sample each datapoint for each scan. 
             
-            //now, do our scans
-            size_t n_scans_t = scans_per_thread + (n_scans % n_threads > t ? 1 : 0);
+            //scans done by this particular thread
+            size_t scans_completed_t {0};
 
-            for (size_t i_scan=0; i_scan<n_scans_t; i_scan++) {
+            while (1) {
+
+                read_mutex.lock();
+                if (++scans_scheduled > n_scans) { 
+                    read_mutex.unlock(); 
+                    break; 
+                }
+                read_mutex.unlock(); 
 
                 TH1D* h_scan = make_local_hist(h_t); 
 
@@ -169,10 +184,11 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                     h_scan->SetBinContent(bin, rand_t.PoissonD(h_scan->GetBinContent(bin))); 
                 }
 
-                if (VERBOSE >= 1) {
-                    read_mutex.lock();
-                    std::printf("thread %2zi/%zi on scan %3zi/%zi (%.1f%%)\n", t+1,n_threads, i_scan+1,n_scans_t, 100.*((double)i_scan)/((double)n_scans_t));
-                    read_mutex.unlock(); 
+                if (VERBOSE == 1) {
+                    write_mutex.lock();
+                    //std::printf("thread %2zi/%zi performing scan %zi (%zi) (%4.1f%%)\n", t_this+1,n_threads, scans_completed_t+1, scans_scheduled, 100.*((double)scans_scheduled)/((double)n_scans));
+                    std::cout << "\r" << progress_bar(((double)scans_scheduled)/((double)n_scans), 100) << std::flush; 
+                    write_mutex.unlock(); 
                 }
 
                 double x0 = m_min - (m_max - m_min)/((double)n_steps-1);
@@ -221,12 +237,12 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
                     h_pQ0_t->Fill( pQ0 ); 
                     h_sqrtQ0_t->Fill( Z );  
-
-                   
                     
                     gaussian_fcn.Set_x0(x0);
                     gaussian_fcn.Set_mu(0.);
+   
                 } // loop over all choices of 'm' 
+                ++scans_completed_t;
             } // loop over all scans
         
             auto cpy_hist = [](TH1D* source, TH1D* target) {
@@ -237,7 +253,7 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
             };
 
             write_mutex.lock();
-            if (VERBOSE >= 1) std::printf("thread %2zi/%zi done with all scans.\n", t+1, n_threads); 
+            //if (VERBOSE >= 1) std::printf("thread %2zi/%zi done with all scans.\n", t+1, n_threads); 
             cpy_hist(h_pQ0_t, hist_pQ0);
             cpy_hist(h_sqrtQ0_t, hist_sqrtQ0); 
             write_mutex.unlock(); 
@@ -247,8 +263,9 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
             delete h_t; 
         }); 
     }
-
     for (auto& t : threads) t.join(); 
+
+    if (VERBOSE==1) std::cout << "\n"; 
 
     auto reset_bin_errors = [](TH1D* h) {
         auto xax = h->GetXaxis(); 
@@ -268,6 +285,19 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
     return; 
 }
 
+
 double GetSigma(double m) {
     return 1.; 
+}
+
+std::string progress_bar(double progress, int n_ticks) {
+    std::ostringstream oss; 
+    oss  << "["; 
+    double n_steps_d = (double)n_ticks;
+    int n_ticks_full = ((double)n_ticks)*progress;
+
+    for (int i=0; i<n_ticks; i++) { oss << (i<=n_ticks_full ? "#" : " "); }
+
+    oss << Form("]    %4.1f%%", progress*100.); 
+    return oss.str(); 
 }
