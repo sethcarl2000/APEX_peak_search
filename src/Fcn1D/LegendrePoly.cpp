@@ -51,7 +51,7 @@ double LegendrePoly::operator()(double x) const
 //_______________________________________________________________________________________________________________________________
 double LegendrePoly::Di(double x, int i) const
 {
-    return legendre_polynomial(x, i); 
+    return legendre_polynomial((x - x_center)/x_scale, i); 
 }
 //_______________________________________________________________________________________________________________________________
 double LegendrePoly::Di_Dj(double x, int i, int j) const 
