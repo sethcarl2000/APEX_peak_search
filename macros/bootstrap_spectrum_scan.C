@@ -62,6 +62,7 @@ double GetSigma(double m);
 /// @return formatted progress bar string
 std::string progress_bar(double progress, int n_steps=100); 
 
+/// @brief Create a local, deletable TObject
 template<typename T> T* local_object_copy(TObject* obj, size_t t)
 {
     const char* new_obj_name = Form("%s_t%zi",obj->GetName(),t); 
