@@ -20,19 +20,21 @@ set(sources
     "src/log_likelihood.cpp"
     "src/gauss_integrate.cpp"
     "src/fit_exponential_poly.cpp"
+    "src/fit_exponential_legendre.cpp"
     "src/numbers.cpp"
     "src/bininfo.cpp"
     "src/best_likelihood_fit.cpp"
     "src/chisquare.cpp"
     "src/compute_Q0.cpp"
     "src/newton_optimizer.cpp"
+    "src/copy_subhist.cpp"
     # Fcn1D 
     "src/Fcn1D/Fcn1D.cpp"
     "src/Fcn1D/ExponentialPoly.cpp"
+    "src/Fcn1D/ExponentialLegendre.cpp"
     "src/Fcn1D/LegendrePoly.cpp"
     "src/Fcn1D/Gauss.cpp"
     "src/Fcn1D/FcnSum.cpp"
-    "src/copy_subhist.cpp"
 )
 
 set(headers 
@@ -40,6 +42,7 @@ set(headers
     "include/log_likelihood.hpp"
     "include/gauss_integrate.hpp"
     "include/fit_exponential_poly.hpp"
+    "include/fit_exponential_legendre.hpp"
     "include/FitResult.hpp"
     "include/numbers.hpp" 
     "include/bininfo.hpp"
@@ -51,6 +54,7 @@ set(headers
     # Fcn1D 
     "include/Fcn1D/Fcn1D.hpp"
     "include/Fcn1D/ExponentialPoly.hpp"
+    "include/Fcn1D/ExponentialLegendre.hpp"
     "include/Fcn1D/LegendrePoly.hpp"
     "include/Fcn1D/Gauss.hpp"
     "include/Fcn1D/FcnSum.hpp"
