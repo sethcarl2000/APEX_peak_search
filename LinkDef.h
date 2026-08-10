@@ -9,6 +9,7 @@
 
 #pragma link C++ struct peak_search::Fcn1D+; 
 #pragma link C++ struct peak_search::ExponentialPoly+; 
+#pragma link C++ struct peak_search::ExponentialLegendre+; 
 #pragma link C++ struct peak_search::LegendrePoly+; 
 #pragma link C++ struct peak_search::Gauss+; 
 #pragma link C++ struct peak_search::FcnSum+; 
