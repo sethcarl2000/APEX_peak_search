@@ -29,6 +29,7 @@ set(sources
     "src/newton_optimizer.cpp"
     "src/copy_subhist.cpp"
     "src/read_model_from_file.cpp"
+    "src/generate_toy_events.cpp"
     # Fcn1D 
     "src/Fcn1D/Fcn1D.cpp"
     "src/Fcn1D/ExponentialPoly.cpp"
@@ -54,6 +55,7 @@ set(headers
     "include/newton_optimizer.hpp"
     "include/copy_subhist.hpp"
     "include/read_model_from_file.hpp"
+    "include/generate_toy_events.hpp"
     # Fcn1D 
     "include/Fcn1D/Fcn1D.hpp"
     "include/Fcn1D/ExponentialPoly.hpp"

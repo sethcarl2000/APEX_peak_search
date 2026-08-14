@@ -11,6 +11,8 @@
 #include <fit_parameter.hpp> 
 #include <compute_Q0.hpp>
 #include <numbers.hpp>
+#include <read_model_from_file.hpp>
+#include <generate_toy_events.hpp>
 //ROOT headers
 #include <TRandom3.h> 
 #include <TH1D.h> 
@@ -36,6 +38,17 @@
 #include <sstream> 
 
 #define VERBOSE 1
+
+//#define MAX_THREADS 1
+
+namespace {
+
+    //min & max m-values (taken from accidental spectrum)
+    constexpr double m_min = 140, m_max = 280;
+
+    //model for the exponential background
+    const std::string path_accidental_model = "data/models/exp_poly_19.dat";
+}; 
 
 //this manages our temporary, drawn objects so that each new frame in a gif can have fresh objects. 
 class DrawnObjectMgr {
@@ -76,7 +89,10 @@ template<typename T> T* local_object_copy(TObject* obj, size_t t)
 
 void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::string histogram_name="h_m")
 {   
-    double m_min{150}, m_max{270};
+
+    //mass ranges to fit
+    double min_fit_mass{150}, max_fit_mass{270};
+    
     double sigma=1.; 
     int n_steps=400; 
 
@@ -88,46 +104,74 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
     std::cout << 
         "getting events..." << std::flush;
     
-    TH1D* hist;
+
+    peak_search::ExponentialPoly accidental_bg_model({}, m_min, m_max);
 
     try {
 
-        auto file = new TFile(file_path.c_str(), "READ");
-
-        if (!file || file->IsZombie()) {
-            Error(__func__, "Unable to open file: %s", file_path.c_str()); 
-            return; 
-        }
-
-        hist = file->Get<TH1D>(histogram_name.c_str()); 
-
-        if (!hist) {
-            Error(__func__, "Could not find inv. mass histogram with name '%s' in file: %s", histogram_name.c_str(), file_path.c_str()); 
-            return; 
-        }
+        peak_search::read_model_from_file(path_accidental_model, &accidental_bg_model);
 
     } catch (const std::exception& e) {
 
-        Error(__func__, "Something went wrong trying to load data.\n what(): %s", e.what()); 
+        Error(__func__, "Something went wrong trying to load model from file\n what(): %s", e.what()); 
         return; 
     }
-    const double xmin{hist->GetXaxis()->GetXmin()}, xmax{hist->GetXaxis()->GetXmax()};
+    
+    //bin size
+    const double dm = 0.5; 
+    const size_t n_bins = (m_max - m_min)/dm; 
 
+    peak_search::histo_1D_t total_hist_1d{.bins={}, .xmin=m_min, .xmax=m_max};
+    
+    total_hist_1d.bins.reserve(n_bins); 
+
+    double m = m_min + dm/2.;
+    for (size_t i=0; i<n_bins; i++) {
+        
+        total_hist_1d.bins.push_back({ m, 0. });
+        m += dm; 
+    } 
+
+    auto hist = new TH1D("h_test", "Test of toy-event generator", n_bins, m_min, m_max); 
+
+    double n_events_total = 246e6; 
+
+    TRandom3 generator; 
+    peak_search::generate_toy_events(total_hist_1d, &accidental_bg_model, n_events_total, generator);
+
+    for (const auto& bin : total_hist_1d.bins) {
+        
+        hist->Fill( bin.x, bin.N );
+    }
+    hist->SetBinErrorOption( TH1::kPoisson );
+
+    std::printf("total integral of test-hist: %.0f", hist->Integral());
 
     auto c_fit = new TCanvas; 
     gStyle->SetOptStat(0); 
     c_fit->DivideRatios(1,2, {1.}, {0.25, 0.75}, 0.00,0.00); 
     
     const double max_signal_events = 40e3; 
-    auto hist_S = new TH2D("h_signal", "Best-fit signal parameter '#mu' vs m;best-fit #mu;m (MeV)", 
-        n_steps/4, m_min, m_max, 
+    auto hist_S = new TH2D("h_signal", "Best-fit signal parameter '#mu' vs m;signal mass hypothesis (MeV);best-fit #mu", 
+        n_steps/4, min_fit_mass, max_fit_mass, 
         100, -max_signal_events, max_signal_events
+    ); 
+
+    const double max_significance = 6.;
+    auto hist_Z = new TH2D("h_Z", "Significance Z ~ #sqrt{Q0} vs m;signal mass hypothesis (MeV);Significance Z (n. #sigma)", 
+        n_steps/4, min_fit_mass, max_fit_mass, 
+        100, -max_significance, +max_significance
+    ); 
+
+    auto hist_pZ = new TH2D("h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)", 
+        n_steps/8, min_fit_mass, max_fit_mass,
+        50, 0., 1.
     ); 
 
     auto c_fit_hist = c_fit->cd(2);
     c_fit_hist->SetTopMargin(0.);  
     hist->GetYaxis()->SetRangeUser(0., hist->GetMaximum()*1.1); 
-    hist->Draw("E"); 
+    hist->Draw("HIST"); 
 
     //this histogram will track the dist. of p(Q0). 
     auto hist_pQ0 = new TH1D("h_pQ0", "Dist. of p(Q0);p(Q0);", 50, 0., 1.); 
@@ -135,12 +179,16 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
     std::cout << "done.\n" << std::flush; 
 
-    
+    double xmin{m_min}, xmax{m_max};
 
     const double dx = (xmax - xmin)/((double)hist->GetXaxis()->GetNbins()); 
     
     //now, get ready to launch threads 
+#ifdef MAX_THREADS
+    const size_t n_threads = std::min<size_t>( std::thread::hardware_concurrency(), MAX_THREADS ); 
+#else 
     const size_t n_threads = std::thread::hardware_concurrency(); 
+#endif
 
     size_t scans_per_thread = n_scans / n_threads; 
 
@@ -165,6 +213,8 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
             auto h_sqrtQ0_t = local_object_copy<TH1D>(hist_sqrtQ0, t_this); 
             auto h_t        = local_object_copy<TH1D>(hist, t_this); 
             auto h_S_t      = local_object_copy<TH2D>(hist_S, t_this); 
+            auto h_Z_t      = local_object_copy<TH2D>(hist_Z, t_this); 
+            auto h_pZ_t     = local_object_copy<TH2D>(hist_pZ, t_this); 
             read_mutex.unlock(); 
 
             TRandom3 rand_t; 
@@ -189,26 +239,56 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
                 auto h_scan = local_object_copy<TH1D>(h_t, t_this); 
 
-                //bootstrap-resample each bin
-                const int n_bins = h_scan->GetXaxis()->GetNbins(); 
-                for (int bin=1; bin<=n_bins; bin++) {
-                    h_scan->SetBinContent(bin, rand_t.PoissonD(h_scan->GetBinContent(bin))); 
-                }
+                //________________________________________________________________________________________________________________________________
+                auto make_toy_hist = [&rand_t, n_events_total, dm, &accidental_bg_model](double m_lo, double m_hi) {
+                    //make sure the range is an even multiple of the number of bins
+                    
+                    //make sure neither limit is out-of-range
+                    if (m_lo < m_min) m_lo = m_min; 
+                    if (m_hi > m_max) m_hi = m_max; 
 
-                double x0 = m_min - (m_max - m_min)/((double)n_steps-1);
+                    //make sure the span of this hist represents an integer number of bins
+                    size_t n_bins = (m_hi - m_lo)/dm;   
 
-                auto gaussian_fcn   = peak_search::Gauss(0, x0, sigma); 
-                gaussian_fcn.Set_mu(0.); 
-                gaussian_fcn.Set_x0(0.);
+                    double m_center = (m_hi + m_lo)/2.; 
+                    double m_span   = ((double)n_bins)*dm; 
 
+                    m_lo = m_center - m_span/2.; 
+                    m_hi = m_center + m_span/2.; 
+
+                    peak_search::histo_1D_t my_hist{ .bins={}, .xmin=m_lo, .xmax=m_hi };
+
+                    my_hist.bins.reserve(n_bins);
+                    double m=m_lo + dm/2.;
+                    for (int i=0; i<n_bins; i++) {
+                        my_hist.bins.push_back({.x=m}); 
+                        m += dm; 
+                    }
+
+                    //generate the random events
+                    peak_search::generate_toy_events(my_hist, &accidental_bg_model, n_events_total, rand_t); 
+
+                    return my_hist; 
+                };  
+                //_________________________________________________________________________________________________________________________________
+
+                double dm_step = (max_fit_mass - min_fit_mass)/((double)n_steps-1);
+
+                double m = min_fit_mass;
+
+                auto gaussian_fcn   = peak_search::Gauss(0, m, sigma); 
+                
                 for (int i_step=0; i_step < n_steps; i_step++) {
-
-                    x0 += (m_max - m_min)/((double)n_steps-1); 
-
-                    auto sub_data       = peak_search::copy_subhist(h_scan, x0-window_size, x0+window_size); 
+    
+                    gaussian_fcn.Set_x0(m);
+                    gaussian_fcn.Set_mu(0.);
+                
+                    //generate data
+                    auto sub_data = make_toy_hist(m - window_size, m + window_size);
 
                     if (VERBOSE >= 2) {
-                        std::cout << "sub histogram xmax=" << x0-window_size << ", " << x0+window_size << "\n"; 
+                        std::cout << "fit m=" << m << "\n";
+                        std::cout << "sub histogram xmax=" << m-window_size << ", " << m+window_size << "\n"; 
                         std::cout << "bins:\n"; 
                         for (auto& bin : sub_data.bins) {
                             std::cout << "  " << bin.x << " | " << bin.N << "\n"; 
@@ -220,18 +300,18 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                     //auto r2 = peak_search::fit_exponential_legendre(sub_data, 4); 
 
                     if (!exp_poly_result) {
-                        Warning(__func__, "Poly. background fit for x0=%.3f failed.", x0); 
+                        Warning(__func__, "m=%.3f fit failed: Poly. background fit failed.", m); 
                         continue; 
                     }
 
                     auto exp_poly = exp_poly_result.data; 
 
-                    auto fcn_s_plus_b   = peak_search::FcnSum(&gaussian_fcn, &exp_poly); 
+                    auto fcn_s_plus_b = peak_search::FcnSum(&gaussian_fcn, &exp_poly); 
 
                     double Q0 = peak_search::compute_Q0(sub_data, fcn_s_plus_b); 
 
                     if (peak_search::numbers::is_nan(Q0)) {
-                        Warning(__func__, "computed Q0 is nan"); 
+                        Warning(__func__, "m=%.3f fit failed: computed Q0 is nan", m); 
                         continue; 
                     }
 
@@ -245,12 +325,14 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
                     double mu = fcn_s_plus_b.GetParams()[0]; 
 
                     h_pQ0_t->Fill( pQ0 ); 
-                    h_sqrtQ0_t->Fill( Z );  
-                    h_S_t->Fill( x0, mu ); 
-                    
-                    gaussian_fcn.Set_x0(x0);
-                    gaussian_fcn.Set_mu(0.);
-   
+                    h_sqrtQ0_t->Fill( Z );
+
+                    h_S_t->Fill( m, mu ); 
+                    h_Z_t->Fill( m, Z ); 
+                    h_pZ_t->Fill( m, pQ0 ); 
+
+                    m += (max_fit_mass - min_fit_mass)/((double)n_steps-1); 
+
                 } // loop over all choices of 'm' 
                 ++scans_completed_t;
             } // loop over all scans
@@ -278,13 +360,16 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
             //if (VERBOSE >= 1) std::printf("thread %2zi/%zi done with all scans.\n", t+1, n_threads); 
             cpy_hist_1d(h_pQ0_t, hist_pQ0);
             cpy_hist_1d(h_sqrtQ0_t, hist_sqrtQ0); 
-            cpy_hist_2d(h_S_t, hist_S); 
+            cpy_hist_2d(h_S_t, hist_S);
+            cpy_hist_2d(h_Z_t, hist_Z); 
+            cpy_hist_2d(h_pZ_t, hist_pZ);
             write_mutex.unlock(); 
             
             delete h_pQ0_t; 
             delete h_sqrtQ0_t;
             delete h_t; 
             delete h_S_t; 
+            delete h_Z_t; 
         }); 
     }
     for (auto& t : threads) t.join(); 
@@ -308,6 +393,12 @@ void bootstrap_spectrum_scan(std::string file_path, size_t n_scans=100, std::str
 
     new TCanvas; 
     hist_S->Draw("col"); 
+
+    new TCanvas; 
+    hist_Z->Draw("col");
+
+    new TCanvas; 
+    hist_pZ->Draw("col");
 
     return; 
 }
