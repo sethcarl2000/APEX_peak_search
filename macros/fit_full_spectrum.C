@@ -71,6 +71,8 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
     }
     const double xmin{hist->GetXaxis()->GetXmin()}, xmax{hist->GetXaxis()->GetXmax()};
 
+    const size_t n_bins = hist->GetNbinsX(); 
+
 
     double *bin_X, *bin_err, *bin_ones; 
 
@@ -90,20 +92,39 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
             return; 
         } 
 
+        //we've got to normalize our coefficeints, to make this a 'true' PDF (the integral of our function over the interval [xmin,xmax] must be =1.)
+        const double dx = (xmax - xmin)/((double)n_bins);
+
+        double integral =0.;
+        double x=xmin;  
+        for (size_t i=0; i<n_bins; i++) {
+            integral += peak_search::gauss_integrate(*poly_model, x, x+dx); 
+            x += dx; 
+        }
+
+        //since for both exponential poly, and exponential legendre, the first parameter is a constant term, 
+        // i.e. exp( par[0] ) * exp( par[1]*x + par[2]*x*x + ... )
+        //
+        // so we just need to 'divide' by this normalization: 
+        //
+        //      exp( par[0] ) / integral = exp( par[0] - std::log(integral) )
+        //
+        auto coefficients = poly_model->GetParamsCpy(); 
+
+        coefficients[0] += -std::log(integral); 
+
         outfile << "# file data: '"<< path_polynomial <<"'\n";
         outfile << "# model type: " << type << "\n"; 
         outfile << "# model order: " << model_order << "\n"; 
-
         int i_coeff=0; 
-        for (double coefficient : poly_model->GetParams()) {
+        for (double coefficient : coefficients) {
             outfile << Form("%-3i    %+18.8e\n", i_coeff, coefficient);
             ++i_coeff; 
         }
+
         outfile.close(); 
 
     }
-
-    const size_t n_bins = hist->GetNbinsX(); 
 
     auto hist_p_chi2 = new TH1D("h_p_chi2",  Form("distribution of p(#chi^{2}) for bin residuals (model %s, %i-ord);bin residuals;counts",type.c_str(), model_order), n_bins/10, 0., 1.);
     
