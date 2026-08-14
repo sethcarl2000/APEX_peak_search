@@ -13,6 +13,7 @@
 #include <fit_parameter.hpp> 
 #include <compute_Q0.hpp>
 #include <numbers.hpp>
+#include <read_model_from_file.hpp>
 //ROOT headers
 #include <TH1D.h> 
 #include <TCanvas.h> 
@@ -25,6 +26,7 @@
 #include <TPad.h> 
 #include <TStyle.h> 
 #include <TLegend.h> 
+#include <Math/ProbFuncMathCore.h>
 //stdlib headers
 #include <cstdio> 
 #include <functional> 
@@ -36,10 +38,11 @@
 #include <thread> 
 #include <sstream> 
 #include <map> 
+#include <fstream> 
 
 peak_search::Fcn1D *get_fcn(TH1D* hist, int order, std::string type); 
 
-void fit_full_spectrum(std::string file_path, int model_order=6, std::string type="exp_legendre", std::string histogram_name="h_m")
+void fit_full_spectrum(std::string file_path, int model_order=6, std::string type="exp_legendre", std::string path_graphic="", std::string path_polynomial="", std::string histogram_name="h_m")
 {
     std::cout << "getting events..." << std::flush;
     
@@ -77,7 +80,34 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
         return; 
     }
 
+    //save the polynomial 
+    if (!path_polynomial.empty()) {
+
+        std::fstream outfile(path_polynomial, std::ios::out | std::ios::trunc);
+
+        if (!outfile.is_open()) {
+            Error(__func__, "Something went wrong trying to create polynomial output file in path '%s'. unable to open / create file.", path_polynomial.c_str());
+            return; 
+        } 
+
+        outfile << "# file data: '"<< path_polynomial <<"'\n";
+        outfile << "# model type: " << type << "\n"; 
+        outfile << "# model order: " << model_order << "\n"; 
+
+        int i_coeff=0; 
+        for (double coefficient : poly_model->GetParams()) {
+            outfile << Form("%-3i    %+18.8e\n", i_coeff, coefficient);
+            ++i_coeff; 
+        }
+        outfile.close(); 
+
+    }
+
     const size_t n_bins = hist->GetNbinsX(); 
+
+    auto hist_p_chi2 = new TH1D("h_p_chi2",  Form("distribution of p(#chi^{2}) for bin residuals (model %s, %i-ord);bin residuals;counts",type.c_str(), model_order), n_bins/10, 0., 1.);
+    
+
 
     bin_X = new double[n_bins]; 
     bin_err = new double[n_bins]; 
@@ -92,9 +122,25 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
         double expect = peak_search::gauss_integrate(*poly_model, x-dx/2., x+dx/2.);
         double actual = hist->GetBinContent(i); 
 
+        double residual = (actual - expect)/std::sqrt( expect );   
+
         bin_X[i-1] = x; 
-        bin_err[i-1] = (actual - expect)/std::sqrt(expect); 
+        bin_err[i-1] = residual; 
         //std::printf(" x: %6.1e  actual %6.1e    expect %6.1e    residual: %6.1e\n", x, actual, expect, (actual-expect)/expect); 
+
+        //compute the p-value for the chi2 for each bin
+        double p_chi2 = ROOT::Math::chisquared_cdf_c( residual*residual, 1 ); 
+        hist_p_chi2->Fill( p_chi2 ); 
+    }
+
+    auto c_p = new TCanvas; 
+    gStyle->SetOptStat(0); 
+    hist_p_chi2->Draw("HIST,E"); 
+    hist_p_chi2->GetYaxis()->SetRangeUser( 0., hist_p_chi2->GetMaximum()*2. );
+
+
+    if (!path_graphic.empty()) {
+        c_p->SaveAs(Form("%s_%s_%iord_p_chi2.png", path_graphic.c_str(), type.c_str(), model_order)); 
     }
 
     auto c_fit = new TCanvas("c_fit", "Fit residuals", 1000, 1200); 
@@ -141,9 +187,12 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
     line->SetLineStyle(kDashed); 
     line->Draw(); 
 
+    if (!path_graphic.empty()) {
+        c_fit->SaveAs(Form("%s_%s_%iord.png", path_graphic.c_str(), type.c_str(), model_order)); 
+    }
+
     std::cout << "done.\n" << std::flush; 
 
-    c_fit->SaveAs(Form("plots/full_spec_%s_%iord.png",type.c_str(),model_order)); 
     return; 
 }
 
