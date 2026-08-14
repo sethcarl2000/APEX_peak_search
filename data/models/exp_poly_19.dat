@@ -1,6 +1,7 @@
 # file data: 'data/models/exp_poly_19.dat'
 # model type: exp_poly
 # model order: 19
+# model domain: [+1.40000000e+02, +2.80000000e+02]
 0         -4.04744767e+00
 1         +1.53945931e+00
 2         -5.05255726e+00

@@ -116,6 +116,7 @@ void fit_full_spectrum(std::string file_path, int model_order=6, std::string typ
         outfile << "# file data: '"<< path_polynomial <<"'\n";
         outfile << "# model type: " << type << "\n"; 
         outfile << "# model order: " << model_order << "\n"; 
+        outfile << Form("# model domain: [%+.8e, %+.8e]\n", xmin, xmax); 
         int i_coeff=0; 
         for (double coefficient : coefficients) {
             outfile << Form("%-3i    %+18.8e\n", i_coeff, coefficient);
