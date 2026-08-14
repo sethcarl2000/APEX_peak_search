@@ -28,6 +28,7 @@ set(sources
     "src/compute_Q0.cpp"
     "src/newton_optimizer.cpp"
     "src/copy_subhist.cpp"
+    "src/read_model_from_file.cpp"
     # Fcn1D 
     "src/Fcn1D/Fcn1D.cpp"
     "src/Fcn1D/ExponentialPoly.cpp"
@@ -51,6 +52,8 @@ set(headers
     "include/fit_parameter.hpp"
     "include/compute_Q0.hpp"
     "include/newton_optimizer.hpp"
+    "include/copy_subhist.hpp"
+    "include/read_model_from_file.hpp"
     # Fcn1D 
     "include/Fcn1D/Fcn1D.hpp"
     "include/Fcn1D/ExponentialPoly.hpp"
@@ -58,7 +61,6 @@ set(headers
     "include/Fcn1D/LegendrePoly.hpp"
     "include/Fcn1D/Gauss.hpp"
     "include/Fcn1D/FcnSum.hpp"
-    "include/copy_subhist.hpp"
 )
 
 #---------------------------------------------------------
