@@ -2,7 +2,7 @@
 #define peak_search_compute_Q0_hpp
 
 #include <Fcn1D/Fcn1D.hpp>
-#include "bininfo.hpp"
+#include <Histo1D.hpp>
 
 #include <TH1D.h> 
 #include <TH2D.h> 
@@ -23,13 +23,13 @@ double compute_Q0(TH1D* hist, Fcn1D& fcn, std::vector<double>& nuissance_params)
 /// @param pdf PDF of expecation value for each bin 
 /// @param nuissance_params first-guess of nuissance parameters to fit. 
 /// @return Q0 statistic (representing degree of agreement with no-signal hypothesis)
-double compute_Q0(histo_1D_t data, Fcn1D& fcn, std::vector<double>& nuissance_params); 
+double compute_Q0(const Histo1D& data, Fcn1D& fcn, std::vector<double>& nuissance_params); 
 
 /// @brief Compute the 'Q0' statistic 
 /// @param hist histogram representing data 
 /// @param fcn expecation value for each bin 
 /// @return Q0 statistic (representing degree of agreement with no-signal hypothesis)
-double compute_Q0(histo_1D_t data, Fcn1D& fcn); 
+double compute_Q0(const Histo1D& data, Fcn1D& fcn); 
 
 /// @brief returns the p-value for a computed Q0
 /// @param Q0 a computed value of 'Q0' 

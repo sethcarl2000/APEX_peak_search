@@ -2,7 +2,7 @@
 #define peak_search_best_likelihood_fit_hpp
 
 #include "FitResult.hpp"
-#include "bininfo.hpp"
+#include <Histo1D.hpp>
 #include "fit_parameter.hpp"
 
 #include <vector>
@@ -17,7 +17,7 @@ namespace peak_search
 /// @param fcn function to fit. subroutine will seek to match the integral of this function over each bin to the bin's contents.
 /// @param params array of parameters to optimize
 /// @return negative log-likelihood of best fit found. 'nan' if fit is unsuccessful. 
-double best_likelihood_fit(const histo_1D_t& data, const std::function<double(double,const double*)>& fcn, std::vector<fit_parameter_t>& params);
+double best_likelihood_fit(const Histo1D& data, const std::function<double(double,const double*)>& fcn, std::vector<fit_parameter_t>& params);
 
 };
 #endif

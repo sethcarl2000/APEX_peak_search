@@ -2,8 +2,8 @@
 #define peak_search_fit_exponential_poly_hpp
 
 #include <Fcn1D/ExponentialPoly.hpp>
-#include "bininfo.hpp"
 #include "FitResult.hpp"
+#include <Histo1D.hpp>
 
 //ROOT headers
 #include <TH1D.h> 
@@ -22,7 +22,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree);
 /// @param hist histogram to fit 
 /// @param degree degree of exponentiated polynomial 
 /// @return Exponential polynomial fit-result 
-FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree);
+FitResult<ExponentialPoly> fit_exponential_poly(const Histo1D& data, int degree);
 
 };
 

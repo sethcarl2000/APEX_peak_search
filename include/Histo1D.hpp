@@ -22,6 +22,8 @@ struct Histo1D {
     size_t GetNbins() const { return bins.size(); }
 };
 
+//check to make sure it's default constructable
+static_assert(std::is_default_constructible_v<Histo1D>); 
 //check to make sure we are move constructable / assignable (with no expcetion guranteed)
 static_assert(std::is_nothrow_move_constructible_v<Histo1D>); 
 static_assert(std::is_nothrow_move_assignable_v<Histo1D>);

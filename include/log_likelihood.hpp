@@ -1,7 +1,7 @@
 #ifndef peak_search_log_likelihood_hpp
 #define peak_search_log_likelihood_hpp
 
-#include "bininfo.hpp"
+#include <Histo1D.hpp>
 
 //ROOT headers
 #include <TH1D.h> 
@@ -25,13 +25,13 @@ double log_likelihood(TH1D* hist, const std::function<double(double)>& fcn);
 /// @param hist vector of 1D histogram bins 
 /// @param pdf function to return expectation value for each bin (evaluated at each bin center)
 /// @return negative log likelihood
-double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn);
+double negative_log_likelihood(const Histo1D& hist, const std::function<double(double)>& fcn);
 
 /// @brief Computes modified NLL (combinatoric factor ignored) 
 /// @param hist vector of 1D histogram bins 
 /// @param pdf function to return expectation value for each bin (evaluated at each bin center)
 /// @return negative log likelihood
-double modified_nll(const histo_1D_t& hist, const std::function<double(double)>& fcn);
+double modified_nll(const Histo1D& hist, const std::function<double(double)>& fcn);
 
 };
 
