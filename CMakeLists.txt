@@ -29,6 +29,8 @@ set(sources
     src/read_model_from_file.cpp
     src/generate_toy_events.cpp
     src/make_histogram_copy.cpp
+    src/FitTestKernel.cpp
+    src/FitTestThreadManager.cpp
     # Fcn1D 
     src/Fcn1D/Fcn1D.cpp
     src/Fcn1D/ExponentialPoly.cpp
@@ -56,6 +58,10 @@ set(headers
     include/make_histogram_copy.hpp
     include/HistoBin.hpp
     include/Histo1D.hpp
+    include/FitTestFunction.hpp
+    include/FitTestKernel.hpp
+    include/FitTestThreadManager.hpp
+    include/SignalFit.hpp
     # Fcn1D 
     include/Fcn1D/Fcn1D.hpp
     include/Fcn1D/ExponentialPoly.hpp
