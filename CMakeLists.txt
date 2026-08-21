@@ -16,53 +16,53 @@ find_package(Eigen3 5.0 REQUIRED)
 #---------------------------------------------------------
 #   Define sources and headers
 set(sources 
-    "src/legendre_polynomial.cpp"
-    "src/log_likelihood.cpp"
-    "src/gauss_integrate.cpp"
-    "src/fit_exponential_poly.cpp"
-    "src/fit_exponential_legendre.cpp"
-    "src/numbers.cpp"
-    "src/bininfo.cpp"
-    "src/best_likelihood_fit.cpp"
-    "src/chisquare.cpp"
-    "src/compute_Q0.cpp"
-    "src/newton_optimizer.cpp"
-    "src/copy_subhist.cpp"
-    "src/read_model_from_file.cpp"
-    "src/generate_toy_events.cpp"
+    src/legendre_polynomial.cpp
+    src/log_likelihood.cpp
+    src/gauss_integrate.cpp
+    src/fit_exponential_poly.cpp
+    src/fit_exponential_legendre.cpp
+    src/numbers.cpp
+    src/best_likelihood_fit.cpp
+    src/chisquare.cpp
+    src/compute_Q0.cpp
+    src/newton_optimizer.cpp
+    src/read_model_from_file.cpp
+    src/generate_toy_events.cpp
+    src/make_histogram_copy.cpp
     # Fcn1D 
-    "src/Fcn1D/Fcn1D.cpp"
-    "src/Fcn1D/ExponentialPoly.cpp"
-    "src/Fcn1D/ExponentialLegendre.cpp"
-    "src/Fcn1D/LegendrePoly.cpp"
-    "src/Fcn1D/Gauss.cpp"
-    "src/Fcn1D/FcnSum.cpp"
+    src/Fcn1D/Fcn1D.cpp
+    src/Fcn1D/ExponentialPoly.cpp
+    src/Fcn1D/ExponentialLegendre.cpp
+    src/Fcn1D/LegendrePoly.cpp
+    src/Fcn1D/Gauss.cpp
+    src/Fcn1D/FcnSum.cpp
 )
 
 set(headers 
-    "include/legendre_polynomial.hpp"
-    "include/log_likelihood.hpp"
-    "include/gauss_integrate.hpp"
-    "include/fit_exponential_poly.hpp"
-    "include/fit_exponential_legendre.hpp"
-    "include/FitResult.hpp"
-    "include/numbers.hpp" 
-    "include/bininfo.hpp"
-    "include/best_likelihood_fit.hpp"
-    "include/chisquare.hpp"
-    "include/fit_parameter.hpp"
-    "include/compute_Q0.hpp"
-    "include/newton_optimizer.hpp"
-    "include/copy_subhist.hpp"
-    "include/read_model_from_file.hpp"
-    "include/generate_toy_events.hpp"
+    include/legendre_polynomial.hpp
+    include/log_likelihood.hpp
+    include/gauss_integrate.hpp
+    include/fit_exponential_poly.hpp
+    include/fit_exponential_legendre.hpp
+    include/FitResult.hpp
+    include/numbers.hpp 
+    include/best_likelihood_fit.hpp
+    include/chisquare.hpp
+    include/fit_parameter.hpp
+    include/compute_Q0.hpp
+    include/newton_optimizer.hpp
+    include/read_model_from_file.hpp
+    include/generate_toy_events.hpp
+    include/make_histogram_copy.hpp
+    include/HistoBin.hpp
+    include/Histo1D.hpp
     # Fcn1D 
-    "include/Fcn1D/Fcn1D.hpp"
-    "include/Fcn1D/ExponentialPoly.hpp"
-    "include/Fcn1D/ExponentialLegendre.hpp"
-    "include/Fcn1D/LegendrePoly.hpp"
-    "include/Fcn1D/Gauss.hpp"
-    "include/Fcn1D/FcnSum.hpp"
+    include/Fcn1D/Fcn1D.hpp
+    include/Fcn1D/ExponentialPoly.hpp
+    include/Fcn1D/ExponentialLegendre.hpp
+    include/Fcn1D/LegendrePoly.hpp
+    include/Fcn1D/Gauss.hpp
+    include/Fcn1D/FcnSum.hpp
 )
 
 #---------------------------------------------------------
