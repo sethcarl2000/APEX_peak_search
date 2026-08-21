@@ -4,7 +4,7 @@
 #include <TError.h>
 #include <TAxis.h>
 //stdlib headers
-#include <stdexcept>]
+#include <stdexcept>
 #include <cmath> 
 
 namespace peak_search
