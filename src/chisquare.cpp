@@ -1,11 +1,12 @@
 #include "chisquare.hpp"
 #include "numbers.hpp"
 #include "gauss_integrate.hpp"
-
+#include <make_histogram_copy.hpp>
+// ROOT headers
 #include <Math/ProbFunc.h>
 #include <Math/QuantFuncMathCore.h>
 #include <TString.h> 
-
+// stdlib headers
 #include <stdexcept> 
 
 namespace peak_search
@@ -19,33 +20,29 @@ double chisquare(TH1D* hist, const Fcn1D& fcn)
         return std::numeric_limits<double>::quiet_NaN(); 
     }
 
-    auto data = copy_1D_hist(hist); 
+    Histo1D data = make_histogram_copy(hist); 
 
     return chisquare(data, fcn); 
 }
 //_______________________________________________________________________________________-
-double chisquare(histo_1D_t data, const Fcn1D& fcn)
+double chisquare(const Histo1D& data, const Fcn1D& fcn)
 {
-    const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
-
     int DoF = data.bins.size(); 
     double chi2 = 0.;
+ 
+    for (const auto& bin : data.bins) {
 
-    double x = data.xmin; 
-    for (int bx=0; bx<data.bins.size(); bx++) {
-
-        double expect = gauss_integrate(fcn, x,x+dx);
-        x += dx; 
+        double expect = gauss_integrate(fcn, bin.xmin, bin.xmax);
 
         if (expect < 1e-6) {
             throw std::logic_error(Form("in <%s>: encountered bin with non-positive expectation value; this is illegal for chi^2 test."
-                " x=%f, f(x)=%f", __func__, x, expect
+                " x=%f, f(x)=%f", __func__, (bin.xmax + bin.xmin)/2., expect
             ));
             return numbers::nan; 
         }
 
         //number of events in this bin 
-        double ni = data.bins[bx].N;
+        double ni = bin.N;
 
         double chi = (ni - expect);
 

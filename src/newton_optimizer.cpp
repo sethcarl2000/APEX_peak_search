@@ -23,7 +23,7 @@
 namespace peak_search 
 {
 
-double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations)
+double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations)
 {
     //check to make sure that the fcn and params match
     if (fcn.GetDoF() != (int)params.size()) {
@@ -37,8 +37,6 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
 
     using Eigen::MatrixXd, Eigen::VectorXd;
     
-    const double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
-
     //set the parameters
     fcn.SetParams(params); 
 
@@ -78,8 +76,8 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
 
         for (const auto& bin : data.bins) {
             
-            double x0 = bin.x - dx/2.;
-            double x1 = bin.x + dx/2.; 
+            double x0 = bin.xmin; 
+            double x1 = bin.xmax; 
 
             double n_i = bin.N; 
             double lambda_i = gauss_integrate(fcn, x0,x1); 
@@ -149,7 +147,7 @@ double newton_optimizer(const histo_1D_t& data, Fcn1D& fcn, std::vector<fit_para
             it,max_iterations, 
             eta, 
             chi2, 
-            ROOT::Math::chisquared_cdf(chi2, data.bins.size())
+            ROOT::Math::chisquared_cdf(chi2, data.GetNbins())
         );
 #endif
 

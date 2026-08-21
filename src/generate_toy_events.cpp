@@ -10,7 +10,7 @@
 namespace peak_search
 {
 
-void generate_toy_events(histo_1D_t& hist, Fcn1D* PDF, double N, TRandom3& generator)
+void generate_toy_events(Histo1D& hist, Fcn1D* PDF, double N, TRandom3& generator)
 {
     //check to make sure N > 0 
     if (N <= 0) {
@@ -33,28 +33,22 @@ void generate_toy_events(histo_1D_t& hist, Fcn1D* PDF, double N, TRandom3& gener
     //check to make sure we have at least a few bins
     if (hist.bins.empty()) {
         throw std::invalid_argument(Form(
-            "in <%s>: histo_1D_t passed (1st arg) has no bins!", 
+            "in <%s>: Histo1D passed (1st arg) has no bins!", 
             __func__
         ));
         return; 
     }
 
-    const double xmin = hist.xmin; 
-    const double xmax = hist.xmax; 
-
-    const double dx = (xmax - xmin)/((double)hist.bins.size());
-
     //now, we can do the work we've set out to do. 
     for (auto& bin : hist.bins) {
 
-        double x = bin.x; 
-        double expectation_val = peak_search::gauss_integrate(*PDF, x-dx/2., x+dx/2.);
+        double expectation_val = peak_search::gauss_integrate(*PDF, bin.xmin, bin.xmax);
 
         //check to make sure the expectation valuse isn't negative (can't have a poisson random variable with neg. expecation val!)
         if (expectation_val < 0.) {
             throw std::logic_error(Form(
-                "in <%s>: integral of PDF over interval x=%.6e to x=%.6e resulted in negative expectation value: %.6e", 
-                __func__, x-dx/2., x+dx/2., expectation_val
+                "in <%s>: integral of PDF over interval x=[%.6e, x=%.6e] resulted in negative expectation value: %.6e", 
+                __func__, bin.xmin, bin.xmax, expectation_val
             ));
             return; 
         }

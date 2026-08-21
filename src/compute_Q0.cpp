@@ -2,9 +2,8 @@
 #include "compute_Q0.hpp"
 #include "numbers.hpp"
 #include "fit_parameter.hpp"
-#include "bininfo.hpp"
 #include <newton_optimizer.hpp>
-
+#include <make_histogram_copy.hpp>
 // ROOT
 #include <TError.h>
 #include <TString.h> 
@@ -25,12 +24,12 @@ double compute_Q0(TH1D* hist, Fcn1D& fcn, std::vector<double>& nuissance_params)
         return numbers::nan;
     }
 
-    auto data = copy_1D_hist(hist);
+    Histo1D data = make_histogram_copy(hist); 
     
     return compute_Q0(data, fcn, nuissance_params);
 }
 //________________________________________________________________________________________________________________________________________
-double compute_Q0(histo_1D_t data, Fcn1D& fcn)
+double compute_Q0(const Histo1D& data, Fcn1D& fcn)
 {
     //first, compute the best fit
     auto& coeffs = fcn.GetParams(); 
@@ -66,7 +65,7 @@ double compute_Q0(histo_1D_t data, Fcn1D& fcn)
     return Q0; 
 }
 //________________________________________________________________________________________________________________________________________
-double compute_Q0(histo_1D_t data, Fcn1D& fcn, std::vector<double>& nuissance_params)
+double compute_Q0(const Histo1D& data, Fcn1D& fcn, std::vector<double>& nuissance_params)
 {
     //check to make sure that the fcn and params match
     if (fcn.GetDoF() != (int)nuissance_params.size()+1) {

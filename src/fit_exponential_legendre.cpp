@@ -2,10 +2,9 @@
 #include "best_likelihood_fit.hpp"
 #include "log_likelihood.hpp"
 #include "fit_parameter.hpp"
-#include "bininfo.hpp"
 #include <newton_optimizer.hpp>
 #include <legendre_polynomial.hpp>
-
+#include <make_histogram_copy.hpp>
 //ROOT header
 #include <TAxis.h> 
 #include <TError.h> 
@@ -35,19 +34,19 @@ FitResult<ExponentialLegendre> fit_exponential_legendre(TH1D* hist, int degree)
         return FitResult<ExponentialLegendre>::Null(); 
     }
 
-    auto data = copy_1D_hist(hist);
+    Histo1D data = make_histogram_copy(hist);
 
     return fit_exponential_legendre(data, degree);
 }
 //______________________________________________________________________________________________________________________________
-FitResult<ExponentialLegendre> fit_exponential_legendre(histo_1D_t data, int degree)
+FitResult<ExponentialLegendre> fit_exponential_legendre(const Histo1D& data, int degree)
 {
     using Eigen::MatrixXd, Eigen::VectorXd; 
     
-    double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
-
-    double x_scale  = (data.xmax - data.xmin)/2.;
-    double x_center = (data.xmax + data.xmin)/2.;  
+    double dx = data.bins[0].xmax - data.bins[0].xmin; 
+    
+    double x_scale  = (data.GetXmax() - data.GetXmin())/2.;
+    double x_center = (data.GetXmax() + data.GetXmin())/2.;  
     
     //first, try to fit the polynomial using a chi-square fit. 
     MatrixXd A = MatrixXd::Zero(degree, degree);
@@ -60,7 +59,7 @@ FitResult<ExponentialLegendre> fit_exponential_legendre(histo_1D_t data, int deg
 
         double Xmu[degree]; 
 
-        double x = (bin.x - x_center)/x_scale; 
+        double x = (0.5*(bin.xmin + bin.xmax) - x_center)/x_scale; 
 
          
         for (int i=0; i<degree; i++) Xmu[i] = legendre_polynomial(x, i); 
@@ -87,7 +86,7 @@ FitResult<ExponentialLegendre> fit_exponential_legendre(histo_1D_t data, int deg
     }
     
     //now, let's 
-    ExponentialLegendre poly({}, data.xmin, data.xmax); 
+    ExponentialLegendre poly({}, data.GetXmin(), data.GetXmax()); 
     poly.SetParams(coeffs_vec); 
 
     //check for NaN

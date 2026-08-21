@@ -14,19 +14,16 @@ namespace peak_search
 {
 
 //_______________________________________________________________________________________________
-double negative_log_likelihood(const histo_1D_t& hist, const std::function<double(double)>& fcn)
+double negative_log_likelihood(const Histo1D& hist, const std::function<double(double)>& fcn)
 {   
 #ifdef DEBUG
     std::printf("in <negative_log_likelihood>\n"); 
 #endif
 
-    const double dx = (hist.xmax - hist.xmin)/((double)hist.bins.size()); 
-
     double log_likelihood = 0.; 
 
     for (const auto& bin : hist.bins) {
-        double x = bin.x; 
-        double expect = gauss_integrate(fcn, x-dx/2., x+dx/2.);
+        double expect = gauss_integrate(fcn, bin.xmin, bin.xmax);
 
         //number of events in this bin 
         double ni = bin.N;
@@ -36,18 +33,17 @@ double negative_log_likelihood(const histo_1D_t& hist, const std::function<doubl
     return -log_likelihood; 
 }
 //_______________________________________________________________________________________________
-double modified_nll(const histo_1D_t& hist, const std::function<double(double)>& fcn)
+double modified_nll(const Histo1D& hist, const std::function<double(double)>& fcn)
 {   
 #ifdef DEBUG
     std::printf("in <negative_log_likelihood>\n"); 
 #endif
-    const double dx = (hist.xmax - hist.xmin)/((double)hist.bins.size()); 
-
+    
     double NLL = 0.; 
 
     for (const auto& bin : hist.bins) {
-        double x = bin.x; 
-        double expect = gauss_integrate(fcn, x-dx/2.,x+dx/2.);
+        
+        double expect = gauss_integrate(fcn, bin.xmin, bin.xmax);
 
         //number of events in this bin 
         double ni = bin.N;

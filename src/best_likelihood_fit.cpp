@@ -2,14 +2,13 @@
 #include "log_likelihood.hpp"
 #include "numbers.hpp"
 #include "gauss_integrate.hpp"
-#include "bininfo.hpp"
-
+// ROOT headers
 #include <TString.h> 
 #include <TAxis.h> 
 #include <Math/Minimizer.h>
 #include <Math/Factory.h>
 #include <Math/Functor.h>
-
+// stdlib headers
 #include <stdexcept>
 #include <vector>
 #include <memory> 
@@ -17,7 +16,7 @@
 namespace peak_search
 {
 
-double best_likelihood_fit(const histo_1D_t& data, const std::function<double(double,const double*)>& fcn, std::vector<fit_parameter_t>& params)
+double best_likelihood_fit(const Histo1D& data, const std::function<double(double,const double*)>& fcn, std::vector<fit_parameter_t>& params)
 {
 
     if (params.empty()) {
@@ -36,7 +35,7 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
     minimizer->SetTolerance(0.1);
     minimizer->SetPrintLevel(0);
 
-    const double dx = (data.xmax - data.xmin)/((double)data.bins.size());
+    const double dx = (data.GetXmax() - data.GetXmin())/((double)data.GetNbins());
 
     //__________________________________________________________________________________________________
     //compute the negative log-likelihood (NLL)
@@ -47,9 +46,7 @@ double best_likelihood_fit(const histo_1D_t& data, const std::function<double(do
         auto fcn_wrapper = [&fcn,par](double x){ return fcn(x,par); };
         for (const auto& bin : data.bins) {
             
-            double x = bin.x; 
-            
-            double expect = gauss_integrate(fcn_wrapper, x-dx/2., x+dx/2.);
+            double expect = gauss_integrate(fcn_wrapper, bin.xmin, bin.xmax);
 
             NLL += expect - (bin.N * std::log(expect));  
         }

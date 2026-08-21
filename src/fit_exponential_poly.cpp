@@ -2,9 +2,8 @@
 #include "best_likelihood_fit.hpp"
 #include "log_likelihood.hpp"
 #include "fit_parameter.hpp"
-#include "bininfo.hpp"
 #include <newton_optimizer.hpp>
-
+#include <make_histogram_copy.hpp>
 //ROOT header
 #include <TAxis.h> 
 #include <TError.h> 
@@ -34,32 +33,35 @@ FitResult<ExponentialPoly> fit_exponential_poly(TH1D* hist, int degree)
         return FitResult<ExponentialPoly>::Null(); 
     }
 
-    auto data = copy_1D_hist(hist);
+    Histo1D data = make_histogram_copy(hist);
 
     return fit_exponential_poly(data, degree);
 }
 //______________________________________________________________________________________________________________________________
-FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
+FitResult<ExponentialPoly> fit_exponential_poly(const Histo1D& data, int degree)
 {
     using Eigen::MatrixXd, Eigen::VectorXd; 
     
-    double dx = (data.xmax - data.xmin)/((double)data.bins.size()); 
+    //make a copy of the histogram 
+    Histo1D hist = data;
 
-    double x_scale  = (data.xmax - data.xmin)/2.;
-    double x_center = (data.xmax + data.xmin)/2.;  
+    double dx = (hist.GetXmax() - hist.GetXmin())/((double)hist.GetNbins()); 
+
+    double x_scale  = (hist.GetXmax() - hist.GetXmin())/2.;
+    double x_center = (hist.GetXmax() + hist.GetXmin())/2.;  
     
     //first, try to fit the polynomial using a chi-square fit. 
     MatrixXd A = MatrixXd::Zero(degree, degree);
     VectorXd B = VectorXd::Zero(degree);
 
-    for (auto& bin : data.bins) {
+    for (auto& bin : hist.bins) {
 
         //don't want to take the logarithm of 0! 
         if (bin.N <= 1e-6) continue; 
 
         double Xmu[degree]; 
 
-        double x = (bin.x - x_center)/x_scale; 
+        double x = (0.5*(bin.xmax + bin.xmin) - x_center)/x_scale; 
 
         Xmu[0] = 1.; 
         for (int i=1; i<degree; i++) Xmu[i] = Xmu[i-1]*x; 
@@ -86,7 +88,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     }
     
     //now, let's 
-    ExponentialPoly poly({}, data.xmin, data.xmax); 
+    ExponentialPoly poly({}, hist.GetXmin(), hist.GetXmax()); 
     poly.SetParams(coeffs_vec); 
 
     //check for NaN
@@ -110,7 +112,7 @@ FitResult<ExponentialPoly> fit_exponential_poly(histo_1D_t data, int degree)
     poly.SetParams(coeffs_descale);     
     */ 
     
-    double eta = newton_optimizer(data, poly, coeffs); 
+    double eta = newton_optimizer(hist, poly, coeffs); 
 
 #ifdef DEBUG
     int i=0; 
