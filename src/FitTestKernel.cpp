@@ -32,7 +32,31 @@ std::string progress_bar(double progress, int n_steps=100);
 constexpr int max_bins = 150; 
 
 //_________________________________________________________________________________________________________________
-FitTestKernel::FitTestKernel(double min_fit_mass, double max_fit_mass, size_t n_steps)
+FitTestKernel& FitTestKernel::Instance()
+{
+    static FitTestKernel instance; 
+    return instance; 
+}
+//_________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________
+FitTestKernel::FitTestKernel()
+{
+    fBackgroundModel = std::make_unique<ExponentialPoly>(std::vector<double>{}, fMinMass, fMaxMass); 
+
+    try {
+
+        peak_search::read_model_from_file(model_path, fBackgroundModel.get());
+
+    } catch (const std::exception& e) {
+
+        Error(__func__, "Something went wrong trying to load model from file\n what(): %s", e.what()); 
+        return; 
+    }
+}
+//_________________________________________________________________________________________________________________
+/*FitTestKernel::FitTestKernel(double min_fit_mass, double max_fit_mass, size_t n_steps)
     : fMinFitMass{min_fit_mass}, fMaxFitMass{max_fit_mass}, fN_steps{n_steps}
 {
     const double max_signal_events = 40e3; 
@@ -93,7 +117,7 @@ TH2D* FitTestKernel::construct_TH2D(const ROOT::RDF::TH2DModel& model)
         model.fNbinsX, model.fXLow, model.fXUp, 
         model.fNbinsY, model.fYLow, model.fYUp
     ); 
-}
+}*/
 //_________________________________________________________________________________________________________________
 void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_t n_threads)
 { 
@@ -117,41 +141,8 @@ void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_
     for (size_t t=0; t<n_threads; t++) {
 
         //create the thread manager 
-        thread_managers.emplace_back(std::make_unique<FitTestThreadManager>(t, this)); 
+        thread_managers.emplace_back(std::make_unique<FitTestThreadManager>(t, test_function, this, fUserTH1D, fUserTH2D)); 
         auto& manager = thread_managers.back(); 
-
-        manager->fTestFcn = test_function; 
-
-        //initialize 2D histograms
-        auto init_histo_2d = [t,this](const ROOT::RDF::TH2DModel& model){
-            auto new_model = model;  
-            new_model.fName = Form("%s_%zi",model.fName.Data(),t); 
-            auto ptr = std::unique_ptr<TH2D>(construct_TH2D(new_model)); 
-            ptr->ResetBit(kCanDelete);
-            ptr->SetBit(kMustCleanup);
-            ptr->SetDirectory(nullptr);
-            return ptr;  
-        }; 
-        
-        manager->fHist_m_vs_mu   = init_histo_2d(fModel_m_vs_mu); 
-
-        manager->fHist_m_vs_Z    = init_histo_2d(fModel_m_vs_Z); 
-        
-        manager->fHist_m_vs_pQ0  = init_histo_2d(fModel_m_vs_pQ0); 
-        
-
-        //initialize 1D histograms
-        auto init_histo_1d = [&manager,t,this](const ROOT::RDF::TH1DModel& model){
-            auto new_model = model;  
-            new_model.fName = Form("%s_%zi",model.fName.Data(),t); 
-            auto ptr = std::unique_ptr<TH1D>(construct_TH1D(new_model));
-            ptr->ResetBit(kCanDelete);
-            ptr->SetBit(kMustCleanup);
-            ptr->SetDirectory(nullptr);
-            return ptr;  
-        }; 
-
-        manager->fHist_pQ0 = init_histo_1d(fModel_pQ0);
 
         threads.emplace_back([this, &manager, &scheduler_mutex, &scans_done, n_scans, t]{
 
@@ -159,13 +150,14 @@ void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_
             while (1) {
 
                 scheduler_mutex.lock();
-                std::cout << "\r" << progress_bar(((double)scans_done)/((double)n_scans), 100) << std::flush; 
+                
                 if (scans_done >= n_scans) { 
                     //all requested scans are already done. 
                     scheduler_mutex.unlock(); 
                     break; 
                 } else {
                     //there's at least 1 scan left to do 
+                    std::cout << "\r" << progress_bar(((double)scans_done)/((double)n_scans), 100) << std::flush; 
                     ++scans_done; 
                     scheduler_mutex.unlock(); 
                 }
@@ -198,16 +190,33 @@ void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_
     //now, we can add up sub-results for each histogram. 
     for (auto& manager : thread_managers) {
         
-        //copy 2d histograms
-        copy_histogram(manager->fHist_m_vs_mu.get(),     fHist_m_vs_mu);
-        copy_histogram(manager->fHist_m_vs_Z.get(),      fHist_m_vs_Z);
-        copy_histogram(manager->fHist_m_vs_pQ0.get(),    fHist_m_vs_pQ0);
-        
-        //copy 1d histograms
-        copy_histogram(manager->fHist_pQ0.get(), fHist_pQ0);
+        // for each thread-manager, copy the thread-local results to the global result. 
+        //TH1D
+        for (auto& hist : fUserTH1D) {
+            
+            if (!hist) {
+                Break(__func__, "Histogram in user-list is null!");
+                return; 
+            }
+            auto hist_thread = manager->GetUserTH1D(hist);
+            copy_histogram(hist_thread, hist); 
+        }
+
+        //TH2D
+        for (auto& hist : fUserTH2D) {
+
+            if (!hist) {
+                Break(__func__, "Histogram in user-list is null!");
+                return; 
+            }
+            auto hist_thread = manager->GetUserTH2D(hist);
+            copy_histogram(hist_thread, hist); 
+        }
     }
 
     //all done! 
+    // because the collection of user thread-managers is a vector constructed in the scope of this function, 
+    // they will all automatically be deleted as this function exits (right now). 
 }
 //_________________________________________________________________________________________________________________
 void FitTestKernel::copy_histogram(TH1D* source, TH1D* target)
@@ -229,22 +238,6 @@ void FitTestKernel::copy_histogram(TH2D* source, TH2D* target)
     }    
 }
 //_________________________________________________________________________________________________________________
-void FitTestKernel::DrawResults()
-{
-    new TCanvas; 
-    gStyle->SetOptStat(0);
-    fHist_m_vs_mu->Draw("col");
-
-    new TCanvas; 
-    fHist_m_vs_Z->Draw("col"); 
-
-    new TCanvas;
-    fHist_m_vs_pQ0->Draw("col"); 
-    
-    new TCanvas; 
-    fHist_pQ0->Draw("HIST"); 
-}
-//_________________________________________________________________________________________________________________
 Histo1D FitTestKernel::GetSpectrum(double m_min, double m_max, TRandom3* generator)
 {
     m_min = std::max(m_min, fMinMass);
@@ -264,7 +257,6 @@ Histo1D FitTestKernel::GetSpectrum(double m_min, double m_max, TRandom3* generat
         hist.bins.emplace_back( m, m+fBinSize, 0. ); 
         m += fBinSize; 
     }
-
 
     //now, generate the toy events 
     generate_toy_events(hist, fBackgroundModel.get(), fStats, *generator); 

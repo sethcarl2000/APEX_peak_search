@@ -13,7 +13,6 @@
 #include <cmath> 
 #include <cstdio> 
 
-#define DEBUG
 
 namespace peak_search
 {
@@ -168,9 +167,11 @@ double solve_for_CLs(const Histo1D& data, Fcn1D& fcn, double CL, double rel_tole
 
     while (rel_error_bound > rel_tolerance) {
 
+#ifdef DEBUG
         std::printf("bisection it: mu [%+.5e, %+.5e]      CL: [%+.5e, %+.5e]    rel. error: %.4e\n",
             mu_low, mu_high, CLs_lo, CLs_hi, rel_error_bound
         );
+#endif 
 
         //do bisection alg. 
         double mu = (mu_low + mu_high)/2.; 

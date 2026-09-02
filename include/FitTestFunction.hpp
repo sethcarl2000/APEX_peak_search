@@ -10,7 +10,7 @@ namespace peak_search
 
 class FitTestThreadManager; 
 
-using FitTestFunction = std::function<SignalFit(FitTestThreadManager*)>; 
+using FitTestFunction = std::function<void(FitTestThreadManager*)>; 
 
 };
 
