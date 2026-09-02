@@ -29,6 +29,8 @@ namespace peak_search
 /// @return formatted progress bar string
 std::string progress_bar(double progress, int n_steps=100); 
 
+constexpr int max_bins = 150; 
+
 //_________________________________________________________________________________________________________________
 FitTestKernel::FitTestKernel(double min_fit_mass, double max_fit_mass, size_t n_steps)
     : fMinFitMass{min_fit_mass}, fMaxFitMass{max_fit_mass}, fN_steps{n_steps}
@@ -46,6 +48,11 @@ FitTestKernel::FitTestKernel(double min_fit_mass, double max_fit_mass, size_t n_
         Error(__func__, "Something went wrong trying to load model from file\n what(): %s", e.what()); 
         return; 
     }
+
+    //find an appropriate number of bins. keep scaling the number of bins until we reach an acceptably small amount. 
+    int n_bins = fN_steps; 
+    int divisor=1; 
+    while (n_bins > max_bins) { n_bins = (fN_steps / (++divisor)); }
 
     fModel_m_vs_mu = ROOT::RDF::TH2DModel{"h_signal", "Best-fit signal parameter '#mu' vs m;signal mass hypothesis (MeV);best-fit #mu", 
         (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
