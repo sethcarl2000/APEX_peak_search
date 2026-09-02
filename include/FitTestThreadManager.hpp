@@ -28,8 +28,10 @@ private:
     FitTestFunction fTestFcn; 
 
     //histograms to fill
-    std::map<const TH1D*, std::unique_ptr<TH1D>> fTH1D; 
-    std::map<const TH2D*, std::unique_ptr<TH2D>> fTH2D; 
+    std::vector<std::unique_ptr<TH1D>> fTH1D; 
+    std::vector<std::unique_ptr<TH2D>> fTH2D; 
+
+    std::map<const TH1*, TH1*> fHistMap; 
 
     enum class htype { kTH1D, kTH2D }; 
 
@@ -57,10 +59,10 @@ public:
     Histo1D get_spectrum(double xmin, double xmax); 
 
     // get thread-local copy of user TH1D
-    TH1D* GetUserTH1D(const TH1D*);
+    TH1D* GetUserTH1D(size_t index);
 
     // get thread-local copy of user TH1D
-    TH2D* GetUserTH2D(const TH2D*);
+    TH2D* GetUserTH2D(size_t index);
 
     //run a scan of the mass spectrum at the given mass
     void run_test(double mass); 

@@ -64,9 +64,11 @@ public:
 
     Histo1D GetSpectrum(double m_min, double m_max, TRandom3* generator);  
 
-    //add user-created histograms
-    void AddTH1D(TH1D& obj) { fUserTH1D.emplace_back(&obj); }; 
-    void AddTH2D(TH2D& obj) { fUserTH2D.emplace_back(&obj); }; 
+    /// @brief Add a user-created histogram to the list of avialable histograms. 
+    /// @param obj User-defined histogram
+    /// @return unique ID with which to access histogram 
+    size_t AddTH1D(TH1D& obj) { fUserTH1D.emplace_back(&obj); return fUserTH1D.size()-1; } 
+    size_t AddTH2D(TH2D& obj) { fUserTH2D.emplace_back(&obj); return fUserTH2D.size()-1; } 
 
 };
 

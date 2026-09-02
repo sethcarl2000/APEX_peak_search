@@ -56,76 +56,13 @@ FitTestKernel::FitTestKernel()
     }
 }
 //_________________________________________________________________________________________________________________
-/*FitTestKernel::FitTestKernel(double min_fit_mass, double max_fit_mass, size_t n_steps)
-    : fMinFitMass{min_fit_mass}, fMaxFitMass{max_fit_mass}, fN_steps{n_steps}
-{
-    const double max_signal_events = 40e3; 
-    
-    fBackgroundModel = std::make_unique<ExponentialPoly>(std::vector<double>{}, fMinMass, fMaxMass); 
-
-    try {
-
-        peak_search::read_model_from_file(model_path, fBackgroundModel.get());
-
-    } catch (const std::exception& e) {
-
-        Error(__func__, "Something went wrong trying to load model from file\n what(): %s", e.what()); 
-        return; 
-    }
-
-    //find an appropriate number of bins. keep scaling the number of bins until we reach an acceptably small amount. 
-    int n_bins = fN_steps; 
-    int divisor=1; 
-    while (n_bins > max_bins) { n_bins = (fN_steps / (++divisor)); }
-
-    fModel_m_vs_mu = ROOT::RDF::TH2DModel{"h_signal", "Best-fit signal parameter '#mu' vs m;signal mass hypothesis (MeV);best-fit #mu", 
-        (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
-        150, -max_signal_events, max_signal_events
-    }; 
-
-    const double max_signal_significance = 6.; 
-    fModel_m_vs_Z = ROOT::RDF::TH2DModel{"h_Z", "Significance Z ~ #sqrt{Q0} vs m;signal mass hypothesis (MeV);Significance Z (n. #sigma)", 
-        (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
-        150, -max_signal_significance, +max_signal_significance
-    }; 
-
-    fModel_m_vs_pQ0 = ROOT::RDF::TH2DModel{"h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)",  
-        (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
-        50, 0., 1.
-    }; 
-
-    fModel_pQ0 = ROOT::RDF::TH1DModel{"h_pQ0", "p(Q0);p(Q0);", 50, 0., 1.}; 
-
-    //construct histograms
-    fHist_m_vs_mu   = construct_TH2D(fModel_m_vs_mu);
-    fHist_m_vs_Z    = construct_TH2D(fModel_m_vs_Z);
-    fHist_m_vs_pQ0  = construct_TH2D(fModel_m_vs_pQ0);
-
-    fHist_pQ0       = construct_TH1D(fModel_pQ0);
-}
-//_________________________________________________________________________________________________________________
-TH1D* FitTestKernel::construct_TH1D(const ROOT::RDF::TH1DModel& model)
-{
-    return new TH1D(model.fName, model.fTitle, 
-        model.fNbinsX, model.fXLow, model.fXUp
-    ); 
-}
-//_________________________________________________________________________________________________________________
-TH2D* FitTestKernel::construct_TH2D(const ROOT::RDF::TH2DModel& model)
-{
-    return new TH2D(model.fName, model.fTitle, 
-        model.fNbinsX, model.fXLow, model.fXUp, 
-        model.fNbinsY, model.fYLow, model.fYUp
-    ); 
-}*/
-//_________________________________________________________________________________________________________________
 void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_t n_threads)
 { 
     if (n_threads<1) { n_threads = std::thread::hardware_concurrency(); }
     else { n_threads = std::min<size_t>(n_threads, (size_t)std::thread::hardware_concurrency); }
 
     std::vector<std::unique_ptr<FitTestThreadManager>> thread_managers;
-    
+
     std::vector<std::thread> threads; 
 
     thread_managers.reserve(n_threads); 
@@ -192,24 +129,26 @@ void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_
         
         // for each thread-manager, copy the thread-local results to the global result. 
         //TH1D
-        for (auto& hist : fUserTH1D) {
-            
+        for (size_t id=0; id<fUserTH1D.size(); id++) {
+
+            auto hist = fUserTH1D[id]; 
             if (!hist) {
                 Break(__func__, "Histogram in user-list is null!");
                 return; 
             }
-            auto hist_thread = manager->GetUserTH1D(hist);
+            auto hist_thread = manager->GetUserTH1D(id);
             copy_histogram(hist_thread, hist); 
         }
 
         //TH2D
-        for (auto& hist : fUserTH2D) {
+        for (size_t id=0; id<fUserTH2D.size(); id++) {
 
+            auto hist = fUserTH2D[id]; 
             if (!hist) {
                 Break(__func__, "Histogram in user-list is null!");
                 return; 
             }
-            auto hist_thread = manager->GetUserTH2D(hist);
+            auto hist_thread = manager->GetUserTH2D(id);
             copy_histogram(hist_thread, hist); 
         }
     }

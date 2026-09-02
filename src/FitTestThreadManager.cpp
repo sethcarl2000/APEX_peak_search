@@ -34,6 +34,8 @@ FitTestThreadManager::FitTestThreadManager(size_t thread_id, const FitTestFuncti
             return; 
         }
         make_threadlocal_hist_copy(h, htype::kTH1D); 
+
+        fHistMap[static_cast<const TH1*>(h)] = fTH1D.back().get(); 
     }
 
     // TH2D
@@ -43,6 +45,8 @@ FitTestThreadManager::FitTestThreadManager(size_t thread_id, const FitTestFuncti
             return; 
         }
         make_threadlocal_hist_copy(h, htype::kTH2D); 
+
+        fHistMap[static_cast<const TH1*>(h)] = fTH2D.back().get(); 
     }
 }
 //_________________________________________________________________________________________________________________
@@ -93,12 +97,12 @@ void FitTestThreadManager::make_threadlocal_hist_copy(TObject* source, htype typ
     switch (type) {
 
         case htype::kTH1D : { 
-            fTH1D[dynamic_cast<const TH1D*>(source)] = std::unique_ptr<TH1D>( dynamic_cast<TH1D*>(copy) ); 
+            fTH1D.emplace_back( std::unique_ptr<TH1D>( dynamic_cast<TH1D*>(copy) ) ); 
             break; 
         }
 
         case htype::kTH2D : { 
-            fTH2D[dynamic_cast<const TH2D*>(source)] = std::unique_ptr<TH2D>( dynamic_cast<TH2D*>(copy) ); 
+            fTH2D.emplace_back( std::unique_ptr<TH2D>( dynamic_cast<TH2D*>(copy) ) ); 
             break;
         }
 
@@ -106,36 +110,22 @@ void FitTestThreadManager::make_threadlocal_hist_copy(TObject* source, htype typ
     }
 }
 //_________________________________________________________________________________________________________________
-TH1D* FitTestThreadManager::GetUserTH1D(const TH1D* source)
+TH1D* FitTestThreadManager::GetUserTH1D(size_t index)
 {
-    if (!source) {
-        Break(__func__, "Hist passed is null."); 
+    if (index >= fTH1D.size()) {
+        Break(__func__, "Invalid index: %zi, valid range is [0,%zi]", index, fTH1D.size()-1); 
         return nullptr; 
     }
-
-    auto find_it = fTH1D.find(source); 
-
-    if (find_it == fTH1D.end()) {
-        Break(__func__, "Requested local cpy of histogram '%s', but it doesn not exist in our list!", source->GetName()); 
-        return nullptr; 
-    }
-    return find_it->second.get(); 
+    return fTH1D[index].get();  
 }
 //_________________________________________________________________________________________________________________
-TH2D* FitTestThreadManager::GetUserTH2D(const TH2D* source)
+TH2D* FitTestThreadManager::GetUserTH2D(size_t index)
 {
-    if (!source) {
-        Break(__func__, "Hist passed is null."); 
+    if (index >= fTH2D.size()) {
+        Break(__func__, "Invalid index: %zi, valid range is [0,%zi]", index, fTH2D.size()-1); 
         return nullptr; 
     }
-
-    auto find_it = fTH2D.find(source); 
-
-    if (find_it == fTH2D.end()) {
-        Break(__func__, "Requested local cpy of histogram '%s', but it doesn not exist in our list!", source->GetName()); 
-        return nullptr; 
-    }
-    return find_it->second.get(); 
+    return fTH2D[index].get();  
 }
 //_________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________
