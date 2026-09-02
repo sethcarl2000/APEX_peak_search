@@ -24,35 +24,35 @@ void test_scan()
     const double min_mass = 155.; 
     const double max_mass = 265.; 
 
-    int n_steps = 100; 
+    int n_steps = 400; 
     int n_bins  = 100; 
 
     auto h_m_vs_mu = new TH2D(
         "h_signal", "Best-fit signal parameter '#mu' vs m;signal mass hypothesis (MeV);best-fit #mu", 
         n_bins, min_mass, max_mass,
-        150, -40e-3, 40e3
+        n_steps/2, -40e3, 40e3
     ); 
 
-    /*
-    const double max_signal_significance = 6.; 
-    fModel_m_vs_Z = ROOT::RDF::TH2DModel{"h_Z", "Significance Z ~ #sqrt{Q0} vs m;signal mass hypothesis (MeV);Significance Z (n. #sigma)", 
-        (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
-        150, -max_signal_significance, +max_signal_significance
-    }; 
+    auto h_m_vs_Z = new TH2D(
+        "h_Z", "Significance Z ~ #sqrt{Q0} vs m;signal mass hypothesis (MeV);Significance Z (n. #sigma)",
+        n_bins, min_mass, max_mass,
+        n_steps/2, -7, 7
+    ); 
 
-    fModel_m_vs_pQ0 = ROOT::RDF::TH2DModel{"h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)",  
-        (int)fN_steps/4, fMinFitMass, fMaxFitMass, 
+    auto h_pQ0 = new TH1D(
+        "h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)",  
         50, 0., 1.
-    }; 
+    ); 
 
-    fModel_pQ0 = ROOT::RDF::TH1DModel{"h_pQ0", "p(Q0);p(Q0);", 50, 0., 1.}; 
-*/ 
     kernel.SetMassRange(min_mass, max_mass); 
     kernel.SetNSteps(n_steps); 
 
-    kernel.AddTH2D(*h_m_vs_mu); 
+    auto ptr_m_vs_mu    = kernel.AddTH2D(*h_m_vs_mu); 
+    auto ptr_m_vs_Z     = kernel.AddTH2D(*h_m_vs_Z); 
 
-    auto fit_window_fcn = static_cast<FitTestFunction>([h_m_vs_mu](peak_search::FitTestThreadManager* mgr)
+    auto ptr_pQ0        = kernel.AddTH1D(*h_pQ0); 
+
+    auto fit_window_fcn = static_cast<FitTestFunction>([ptr_m_vs_mu, ptr_m_vs_Z, ptr_pQ0](peak_search::FitTestThreadManager* mgr)
     {
         double window_size = 7.; // MeV 
 
@@ -69,24 +69,35 @@ void test_scan()
 
         double Q0 = peak_search::compute_Q0(spectrum, f_sum); 
 
+        double Z  = (Q0<0.?-1:+1) * std::sqrt(std::fabs(Q0)); 
+ 
         double mu = f_sum.GetParams()[0];
+
+        double pQ0 = compute_Q0_p(Q0); 
 
         //get the middle(-ish)bin. this gives us an order-of-magnitude estimate for the natural variance of the signal paramter, mu.
         double N_middle = spectrum.bins.at( spectrum.GetNbins()/2 ).N; 
 
         //also, find the CLs value
-        double mu_CL95 = peak_search::solve_for_CLs(spectrum, f_sum, 0.95, 0.01, std::sqrt(N_middle) );
+        //double mu_CL95 = peak_search::solve_for_CLs(spectrum, f_sum, 0.95, 0.01, std::sqrt(N_middle) );
 
-        auto h_m_vs_mu_t = mgr->GetUserTH2D(h_m_vs_mu); 
+        mgr->GetUserTH2D(ptr_m_vs_mu)->Fill(mass, mu); 
+        mgr->GetUserTH2D(ptr_m_vs_Z) ->Fill(mass, Z); 
 
-        h_m_vs_mu->Fill(mass, mu); 
+        mgr->GetUserTH1D(ptr_pQ0)    ->Fill(pQ0); 
         return;
     });
 
-    kernel.RunTest(20, fit_window_fcn); 
+    kernel.RunTest(100, fit_window_fcn); 
 
     new TCanvas;
     h_m_vs_mu->Draw("col"); 
+
+    new TCanvas;
+    h_m_vs_Z->Draw("col"); 
+
+    new TCanvas;
+    h_pQ0->Draw(); 
 
 }
 ///________________________________________________________________________________________________________
