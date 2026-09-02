@@ -29,6 +29,7 @@ set(sources
     src/read_model_from_file.cpp
     src/generate_toy_events.cpp
     src/make_histogram_copy.cpp
+    src/solve_for_CLs.cpp
     src/FitTestKernel.cpp
     src/FitTestThreadManager.cpp
     # Fcn1D 
@@ -56,6 +57,7 @@ set(headers
     include/read_model_from_file.hpp
     include/generate_toy_events.hpp
     include/make_histogram_copy.hpp
+    include/solve_for_CLs.hpp
     include/HistoBin.hpp
     include/Histo1D.hpp
     include/FitTestFunction.hpp
