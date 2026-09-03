@@ -5,6 +5,9 @@
 #include "fit_parameter.hpp"
 #include <newton_optimizer.hpp>
 #include <make_histogram_copy.hpp>
+// eigen
+#include <eigen3/Eigen/Core> 
+#include <eigen3/Eigen/Dense>
 // ROOT
 #include <TError.h>
 #include <TString.h> 
