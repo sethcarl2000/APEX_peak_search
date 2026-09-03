@@ -30,7 +30,7 @@ namespace peak_search
 double gauss_integrate(const std::function<double(double)>& fcn, double xmin,double xmax)
 {
 #ifdef DEBUG
-    std::printf("in <gauss_integrate>\n");
+    std::printf("in <gauss_integrate (std::function)>\n");
 #endif
     double scale  = (xmax-xmin)/2.;
     double center = (xmax+xmin)/2.; 
@@ -50,7 +50,10 @@ double gauss_integrate(const std::function<double(double)>& fcn, double xmin,dou
 double gauss_integrate(const Fcn1D& fcn, double xmin,double xmax)
 {
 #ifdef DEBUG
-    std::printf("in <gauss_integrate>\n");
+    std::printf("in <gauss_integrate (Fcn1D)>\n");
+    std::printf("params:\n");
+    int ii=0; 
+    for (const auto& val : fcn.GetParamsCpy()) std::printf("    %2i     %f\n", ii, val); 
 #endif
     double scale  = (xmax-xmin)/2.;
     double center = (xmax+xmin)/2.; 
@@ -60,7 +63,7 @@ double gauss_integrate(const Fcn1D& fcn, double xmin,double xmax)
         double x = scale*gauss_abscissa[ix] + center; 
 
 #ifdef DEBUG
-        std::printf("in <gauss_integrate>: calling fcn\n");
+        //std::printf("in <gauss_integrate>: calling fcn\n");
 #endif
         sum += fcn(x) * gauss_weight[ix];
     }
