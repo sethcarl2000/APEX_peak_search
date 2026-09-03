@@ -25,6 +25,7 @@ namespace numbers
         return false; 
     }
     
+    inline double sign(double x) { if (is_nan(x)) return nan; return x<0. ? -1. : +1; }
     
 
     /// @brief positive integer-power. 
