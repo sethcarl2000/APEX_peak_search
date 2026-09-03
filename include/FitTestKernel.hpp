@@ -61,6 +61,7 @@ public:
     void SetMassRange(double min, double max) { fMinFitMass=min; fMaxFitMass=max; }
     void SetNSteps(size_t n_steps) { fN_steps=n_steps; }
     void SetTotalStats(double stats) { fStats =stats; }
+    void SetMassBinSize(double binsize) { fBinSize =binsize; }
 
     Histo1D GetSpectrum(double m_min, double m_max, TRandom3* generator);  
 
