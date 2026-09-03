@@ -163,16 +163,15 @@ double solve_for_CLs(const Histo1D& data, Fcn1D& fcn, double CL, double rel_tole
     std::printf("starting bisection iterations...\n"); 
 #endif
 
-    double rel_error_bound = grid_search_size; 
+    double rel_error_bound = 2.*(mu_high - mu_low)/(mu_high + mu_low); 
 
-    while (rel_error_bound > rel_tolerance) {
+    while (2.*(mu_high - mu_low)/(mu_high + mu_low) > rel_tolerance) {
 
 #ifdef DEBUG
         std::printf("bisection it: mu [%+.5e, %+.5e]      CL: [%+.5e, %+.5e]    rel. error: %.4e\n",
             mu_low, mu_high, CLs_lo, CLs_hi, rel_error_bound
         );
 #endif 
-
         //do bisection alg. 
         double mu = (mu_low + mu_high)/2.; 
 
@@ -186,7 +185,7 @@ double solve_for_CLs(const Histo1D& data, Fcn1D& fcn, double CL, double rel_tole
             CLs_lo = residual + CL; 
         }
 
-        rel_error_bound *= 0.5; 
+        rel_error_bound = 2.*(mu_high - mu_low)/(mu_high + mu_low); 
     }
 
     return (mu_low + mu_high)/2.; 
