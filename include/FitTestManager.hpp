@@ -1,5 +1,5 @@
-#ifndef peak_search_FitTestKernel_hpp
-#define peak_search_FitTestKernel_hpp
+#ifndef peak_search_FitTestManager_hpp
+#define peak_search_FitTestManager_hpp
 
 
 #include <Fcn1D/ExponentialPoly.hpp>
@@ -17,7 +17,7 @@
 namespace peak_search 
 {
 
-class FitTestKernel {
+class FitTestManager {
 private: 
 
     static constexpr double fMinMass{140}, fMaxMass{280};
@@ -43,16 +43,16 @@ private:
     std::vector<TH1D*> fUserTH1D{}; 
     std::vector<TH2D*> fUserTH2D{}; 
     
-    FitTestKernel(); 
-    ~FitTestKernel() = default; 
+    FitTestManager(); 
+    ~FitTestManager() = default; 
 
 public: 
 
     // delete copy ctor & copy assignment operator
-    FitTestKernel(const FitTestKernel&) = delete; 
-    FitTestKernel& operator=(const FitTestKernel&) = delete; 
+    FitTestManager(const FitTestManager&) = delete; 
+    FitTestManager& operator=(const FitTestManager&) = delete; 
     
-    static FitTestKernel& Instance(); 
+    static FitTestManager& Instance(); 
 
 
     void RunTest(size_t n_scans, FitTestFunction test_function, size_t n_threads=0);

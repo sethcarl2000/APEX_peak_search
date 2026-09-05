@@ -1,5 +1,5 @@
 
-#include <FitTestKernel.hpp> 
+#include <FitTestManager.hpp> 
 #include <read_model_from_file.hpp>
 #include <generate_toy_events.hpp>
 // ROOT
@@ -32,16 +32,16 @@ std::string progress_bar(double progress, int n_steps=100);
 constexpr int max_bins = 150; 
 
 //_________________________________________________________________________________________________________________
-FitTestKernel& FitTestKernel::Instance()
+FitTestManager& FitTestManager::Instance()
 {
-    static FitTestKernel instance; 
+    static FitTestManager instance; 
     return instance; 
 }
 //_________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________
-FitTestKernel::FitTestKernel()
+FitTestManager::FitTestManager()
 {
     fBackgroundModel = std::make_unique<ExponentialPoly>(std::vector<double>{}, fMinMass, fMaxMass); 
 
@@ -56,7 +56,7 @@ FitTestKernel::FitTestKernel()
     }
 }
 //_________________________________________________________________________________________________________________
-void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_t n_threads)
+void FitTestManager::RunTest(size_t n_scans, FitTestFunction test_function, size_t n_threads)
 { 
     if (n_threads<1) { n_threads = std::thread::hardware_concurrency(); }
     else { n_threads = std::min<size_t>(n_threads, (size_t)std::thread::hardware_concurrency); }
@@ -158,7 +158,7 @@ void FitTestKernel::RunTest(size_t n_scans, FitTestFunction test_function, size_
     // they will all automatically be deleted as this function exits (right now). 
 }
 //_________________________________________________________________________________________________________________
-void FitTestKernel::copy_histogram(TH1D* source, TH1D* target)
+void FitTestManager::copy_histogram(TH1D* source, TH1D* target)
 {
     auto xax = source->GetXaxis(); 
     for (int bin=1; bin<=xax->GetNbins(); bin++) {
@@ -166,7 +166,7 @@ void FitTestKernel::copy_histogram(TH1D* source, TH1D* target)
     }
 }
 //_________________________________________________________________________________________________________________
-void FitTestKernel::copy_histogram(TH2D* source, TH2D* target)
+void FitTestManager::copy_histogram(TH2D* source, TH2D* target)
 {
     auto xax = source->GetXaxis(); 
     auto yax = source->GetYaxis(); 
@@ -177,7 +177,7 @@ void FitTestKernel::copy_histogram(TH2D* source, TH2D* target)
     }    
 }
 //_________________________________________________________________________________________________________________
-Histo1D FitTestKernel::GetSpectrum(double m_min, double m_max, TRandom3* generator)
+Histo1D FitTestManager::GetSpectrum(double m_min, double m_max, TRandom3* generator)
 {
     m_min = std::max(m_min, fMinMass);
     m_max = std::min(m_max, fMaxMass);

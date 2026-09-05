@@ -31,7 +31,7 @@ set(sources
     src/make_histogram_copy.cpp
     src/solve_for_CLs.cpp
     src/compute_statistics.cpp
-    src/FitTestKernel.cpp
+    src/FitTestManager.cpp
     src/FitTestThreadManager.cpp
     # Fcn1D 
     src/Fcn1D/Fcn1D.cpp
@@ -63,7 +63,7 @@ set(headers
     include/HistoBin.hpp
     include/Histo1D.hpp
     include/FitTestFunction.hpp
-    include/FitTestKernel.hpp
+    include/FitTestManager.hpp
     include/FitTestThreadManager.hpp
     include/SignalFit.hpp
     # Fcn1D 

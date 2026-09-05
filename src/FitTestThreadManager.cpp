@@ -1,6 +1,6 @@
 
 #include <FitTestThreadManager.hpp>
-#include <FitTestKernel.hpp>
+#include <FitTestManager.hpp>
 #include <compute_Q0.hpp>
 #include <generate_toy_events.hpp>
 // ROOT 
@@ -19,7 +19,7 @@ namespace peak_search
 {
 
 //_________________________________________________________________________________________________________________
-FitTestThreadManager::FitTestThreadManager(size_t thread_id, const FitTestFunction& fcn, FitTestKernel* parent, const std::vector<TH1D*>& f_TH1D, const std::vector<TH2D*>& f_TH2D)
+FitTestThreadManager::FitTestThreadManager(size_t thread_id, const FitTestFunction& fcn, FitTestManager* parent, const std::vector<TH1D*>& f_TH1D, const std::vector<TH2D*>& f_TH2D)
     : fThreadId{thread_id}, fParent{parent}, fTestFcn{fcn}
 {   
     //seed the random number generator with the current thread-id

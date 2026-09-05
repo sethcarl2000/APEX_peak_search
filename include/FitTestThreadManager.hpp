@@ -17,13 +17,13 @@
 namespace peak_search
 {
 
-class FitTestKernel; 
+class FitTestManager; 
 
 class FitTestThreadManager {
 private: 
     size_t fThreadId; 
 
-    FitTestKernel* fParent; 
+    FitTestManager* fParent; 
 
     FitTestFunction fTestFcn; 
 
@@ -46,11 +46,11 @@ private:
 
 
 public: 
-    //we've private-ed the constructor, so only the 'FitTestKernel' can make copies of this object. 
+    //we've private-ed the constructor, so only the 'FitTestManager' can make copies of this object. 
     FitTestThreadManager(
         size_t thread_id, 
         const FitTestFunction& fcn, 
-        FitTestKernel* parent, 
+        FitTestManager* parent, 
         const std::vector<TH1D*>& f_TH1D, 
         const std::vector<TH2D*>& f_TH2D
     );  
