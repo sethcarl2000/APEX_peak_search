@@ -26,14 +26,16 @@ public:
         ComputeStepSizes(); 
     }
 
-    void Append(const Parameter& par) {
+    size_t Append(const Parameter& par) {
         fParams.emplace_back(par); 
         ComputeStepSizes(); 
+        return fParams.size()-1; 
     }
     
-    void Append(unsigned long n_steps, double min, double max) {
+    size_t Append(unsigned long n_steps, double min, double max) {
         fParams.emplace_back(n_steps, min, max); 
         ComputeStepSizes(); 
+        return fParams.size()-1; 
     }
 
     unsigned long GetNSteps() const { return (fParams.empty()) ? 0 : fStepSizes.back() * fParams.back().get_n_steps(); } 

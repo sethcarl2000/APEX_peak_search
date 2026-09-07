@@ -109,14 +109,14 @@ void ThreadManager::ExecuteStepRange(size_t step0, size_t step1)
         throw std::invalid_argument(Form("in <ThreadManager::ExecuteSteps>: index of first step %lu requested is invalid; valid range is [0,%lu]", step0, fParamList.GetNSteps()-1)); 
         return; 
     }
-    if (step1 >= fParamList.GetNSteps()) {
-        throw std::invalid_argument(Form("in <ThreadManager::ExecuteSteps>: index of last step %lu requested is invalid; valid range is [0,%lu]", step1, fParamList.GetNSteps()-1)); 
+    if (step1 > fParamList.GetNSteps()) {
+        throw std::invalid_argument(Form("in <ThreadManager::ExecuteSteps>: index of last step %lu requested is invalid; valid range is [0,%lu]", step1, fParamList.GetNSteps())); 
         return; 
     }
 
     //now, loop over all steps. 
     fStep=step0; 
-    for (; fStep<=step1; fStep++) { fTestFcn(this); }
+    for (; fStep<step1; fStep++) { fTestFcn(this); }
 }
 //_________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________

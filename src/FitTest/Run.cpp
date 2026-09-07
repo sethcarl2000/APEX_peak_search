@@ -18,7 +18,7 @@
 #include <iostream> 
 #include <cstdlib> 
 #include <stdexcept> 
-
+#define DEBUG
 
 namespace peak_search
 {
@@ -43,7 +43,7 @@ std::string progress_bar(double progress, int n_steps=100);
 void copy_result(TObject* source, TObject* dest); 
 
 
-void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn)
+void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int run_verbosity)
 {
     auto background_model = std::make_unique<ExponentialPoly>(std::vector<double>{}, fMinMass, fMaxMass); 
 
@@ -77,21 +77,23 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn)
 
     size_t scans_done=0; 
 
-    std::cout << "\n staring " << n_trials << " tests..." << std::flush; 
+    if (run_verbosity>0)
+        std::cout << "\n staring " << n_trials << " trials..." << std::flush; 
     TStopwatch stopwatch; 
 
     size_t trials_scheduled{0}; 
 
+    
     unsigned long steps_scheduled{0}; 
     const unsigned long steps_per_task = cfg.params.GetNSteps(); 
-
+    
     for (size_t t=0; t<cfg.n_threads; t++) {
 
         //create the thread manager 
         thread_managers.emplace_back(std::make_unique<ThreadManager>(t, cfg, fcn, background_model.get(), outputs.GetPtrs())); 
         auto& manager = thread_managers.back(); 
 
-        threads.emplace_back([&manager, &scheduler_mutex, &trials_scheduled,n_trials,  &steps_scheduled,steps_per_task,&cfg, t]{
+        threads.emplace_back([&manager, &scheduler_mutex, &trials_scheduled,n_trials,  &steps_scheduled,steps_per_task,&cfg, t, run_verbosity]{
 
             //keep running scans until all the scans are done. 
             while (1) {
@@ -101,18 +103,33 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn)
 
                 scheduler_mutex.lock();
 
+                unsigned long step_0 = steps_scheduled; 
+                unsigned long step_1 = std::min( step_0 + cfg.n_steps_per_task, steps_per_task ); 
+
+                steps_scheduled = step_1; 
+
+                if (run_verbosity>1) {
+
+                    double fraction_done = ((double)(steps_per_task*trials_scheduled + steps_scheduled))/((double)steps_per_task*n_trials); 
+                    if (run_verbosity==1)
+                        std::cout << "\r" << progress_bar(fraction_done, 100) << std::flush; 
+
+                    if (run_verbosity>=2) {
+                        std::printf("\n"
+                            "thread: %2zi Scheduled trial: %3zi, steps [%5lu - %5lu]. %5.1f%%\n",
+                            t, 
+                            trials_scheduled,
+                            step_0, step_1-1, fraction_done*100.
+                        );
+                    }
+                }
+
                 // if all the steps in this trial are done, move on to the next trial. 
                 if (steps_scheduled >= steps_per_task) {
                     ++trials_scheduled;  
                     steps_scheduled=0; 
                 }
-
-                unsigned long step_0 = steps_scheduled; 
-                unsigned long step_1 = std::min( step_0 + cfg.n_steps_per_task, steps_per_task ); 
-
-                steps_scheduled = step_1; 
                 
-                std::cout << "\r" << progress_bar(((double)(steps_per_task*trials_scheduled + steps_scheduled))/((double)steps_per_task*n_trials), 100) << std::flush; 
 
                 scheduler_mutex.unlock(); 
 
@@ -131,9 +148,10 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn)
     double cputime = stopwatch.CpuTime(); 
     double realtime = stopwatch.RealTime(); 
 
-    std::printf("done.\nReal time elapsed: %.3f s, %.3f s cpu time (%.4f ms / step)\n",
-        realtime, cputime, 1e6*cputime/((double)n_trials*steps_per_task)
-    );
+    if (run_verbosity>0)
+        std::printf("done.\nReal time elapsed: %.3f s, %.3f s cpu time (%.4f ms / step)\n",
+            realtime, cputime, 1e6*cputime/((double)n_trials*steps_per_task)
+        );
 
 
     //now, we can add up sub-results for each histogram. 

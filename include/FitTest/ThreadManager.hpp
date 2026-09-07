@@ -25,7 +25,7 @@ namespace FitTest
 class ThreadManager {
 private: 
 
-    friend void Run(size_t, Configuration, Outputs, Function);  
+    friend void Run(size_t, Configuration, Outputs, Function, int);  
 
     size_t fThreadId; 
 
