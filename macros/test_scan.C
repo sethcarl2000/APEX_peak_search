@@ -1,7 +1,10 @@
 
-#include <FitTestFunction.hpp>
-#include <FitTestKernel.hpp>
-#include <FitTestThreadManager.hpp>
+#include <FitTest/Function.hpp>
+#include <FitTest/Run.hpp>
+#include <FitTest/ThreadManager.hpp>
+#include <FitTest/Configuration.hpp>
+#include <FitTest/Outputs.hpp>
+#include <FitTest/ParameterList.hpp>
 #include <solve_for_CLs.hpp>
 #include <SignalFit.hpp>
 #include <Histo1D.hpp>
@@ -99,15 +102,6 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
         y_med.emplace_back(y_median); 
     }
 
-    /*if (!gPad) new TCanvas;
-    
-    double x_span = x_ax->GetXmax() - x_ax->GetXmin(); 
-    gPad->DrawFrame(
-        x_ax->GetXmin() - 0.1*x_span,
-        minval - 0.1*(maxval-minval), 
-        x_ax->GetXmax() + 0.1*x_span,
-        maxval + 0.1*(maxval-minval)
-    );*/ 
 
     auto g2 = new TGraphErrors(n_bins_x, x.data(), y_cl2.data(), nullptr, y_err_cl2.data()); 
     
@@ -138,8 +132,6 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
 void test_scan()
 {
     using namespace peak_search; 
-
-    auto& kernel = FitTestKernel::Instance(); 
 
     const double min_mass = 150.; 
     const double max_mass = 270.; 
@@ -176,27 +168,39 @@ void test_scan()
     auto h_pQ0 = new TH1D(
         "h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)",  
         50, 0., 1.
-    ); 
+    );  
 
-    kernel.SetMassRange(min_mass, max_mass); 
-    kernel.SetNSteps(n_steps); 
-    kernel.SetMassBinSize(0.5); 
+    FitTest::Configuration config; 
 
-    auto ptr_m_vs_mu    = kernel.AddTH2D(*h_m_vs_mu); 
-    auto ptr_m_vs_Z     = kernel.AddTH2D(*h_m_vs_Z); 
-    auto ptr_m_vs_uCL   = kernel.AddTH2D(*h_m_vs_uCL); 
-    auto ptr_m_vs_e2CL  = kernel.AddTH2D(*h_m_vs_e2CL); 
+    config.total_stats = 76e6; 
 
-    auto ptr_pQ0        = kernel.AddTH1D(*h_pQ0); 
+    config.n_steps_per_task = 200; 
 
-    auto fit_window_fcn = static_cast<FitTestFunction>([ptr_m_vs_mu, ptr_m_vs_Z, ptr_pQ0, ptr_m_vs_uCL, ptr_m_vs_e2CL](peak_search::FitTestThreadManager* mgr)
+    auto p_mass = config.params.Append(400, min_mass, max_mass);   
+
+    FitTest::Outputs outputs; 
+
+    auto p_m_vs_mu   = outputs.Add(h_m_vs_mu);
+    auto p_m_vs_Z    = outputs.Add(h_m_vs_Z);
+    auto p_m_vs_uCL  = outputs.Add(h_m_vs_uCL);
+    auto p_m_vs_e2CL = outputs.Add(h_m_vs_e2CL);
+    auto p_pQ0       = outputs.Add(h_pQ0);
+
+    auto fit_window_fcn = static_cast<FitTest::Function>([&](FitTest::ThreadManager* mgr)
     {
         double window_size = 7.; // MeV 
 
-        auto mass = mgr->get_mass(); 
+        const auto params = mgr->GetParamList(); 
+
+        double mass = params[p_mass]; 
         double resolution = mass_resolution(mass); 
 
-        peak_search::Histo1D spectrum = mgr->get_spectrum(mass - window_size*resolution, mass + window_size*resolution);
+        double m_min = mass - window_size*resolution; 
+        double m_max = mass + window_size*resolution; 
+
+        int n_bins = (m_max - m_min)/(0.5); 
+
+        const auto spectrum = mgr->GetSpectrum(n_bins, mass - window_size*resolution, mass + window_size*resolution);
 
         auto gaussian_fcn = peak_search::Gauss(0, mass, resolution); 
 
@@ -225,21 +229,20 @@ void test_scan()
         //get the middle(-ish)bin. this gives us an order-of-magnitude estimate for the natural variance of the signal paramter, mu.
         double N_middle = spectrum.bins.at( spectrum.GetNbins()/2 ).N; 
 
-        mgr->GetUserTH2D(ptr_m_vs_mu)  ->Fill(mass, mu); 
-        mgr->GetUserTH2D(ptr_m_vs_Z)   ->Fill(mass, Z); 
-        mgr->GetUserTH2D(ptr_m_vs_uCL) ->Fill(mass, std::log10(mu_cl95)); 
-        mgr->GetUserTH2D(ptr_m_vs_e2CL)->Fill(mass, std::log10(epsilon2_CL)); 
+        mgr->GetOutput<TH2D>(p_m_vs_mu)  ->Fill(mass, mu); 
+        mgr->GetOutput<TH2D>(p_m_vs_Z)   ->Fill(mass, Z); 
+        mgr->GetOutput<TH2D>(p_m_vs_uCL) ->Fill(mass, std::log10(mu_cl95)); 
+        mgr->GetOutput<TH2D>(p_m_vs_e2CL)->Fill(mass, std::log10(epsilon2_CL)); 
 
-        mgr->GetUserTH1D(ptr_pQ0)    ->Fill(pQ0); 
+        mgr->GetOutput<TH1D>(p_pQ0)->Fill(pQ0); 
         return;
     });
 
-    kernel.SetTotalStats(100e6);
-    kernel.RunTest(200, fit_window_fcn); 
+    FitTest::Run(200, config, outputs, fit_window_fcn, 2); 
 
-    new TCanvas; 
+    /*new TCanvas; 
     make_brazil_flag_plot(h_m_vs_e2CL); 
-    return; 
+    return;*/  
 
     new TCanvas;
     gStyle->SetOptStat(0); 
