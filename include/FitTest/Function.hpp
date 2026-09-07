@@ -1,5 +1,5 @@
-#ifndef peak_search_FitTestFunction_hpp
-#define peak_search_FitTestFunction_hpp
+#ifndef peak_search_FitTest_Function_hpp
+#define peak_search_FitTest_Function_hpp
 
 #include <SignalFit.hpp>
 // stdlib 
@@ -7,11 +7,14 @@
 
 namespace peak_search
 {
+namespace FitTest
+{
 
-class FitTestThreadManager; 
+class ThreadManager; 
 
-using FitTestFunction = std::function<void(FitTestThreadManager*)>; 
+using Function = std::function<void(ThreadManager*)>; 
 
-};
+}
+}
 
 #endif
