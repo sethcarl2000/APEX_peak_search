@@ -31,8 +31,9 @@ set(sources
     src/make_histogram_copy.cpp
     src/solve_for_CLs.cpp
     src/compute_statistics.cpp
-    src/FitTestManager.cpp
-    src/FitTestThreadManager.cpp
+    src/FitTest/ThreadManager.cpp
+    src/FitTest/ParameterList.cpp
+    src/FitTest/Run.cpp
     # Fcn1D 
     src/Fcn1D/Fcn1D.cpp
     src/Fcn1D/ExponentialPoly.cpp
@@ -62,9 +63,12 @@ set(headers
     include/solve_for_CLs.hpp
     include/HistoBin.hpp
     include/Histo1D.hpp
-    include/FitTestFunction.hpp
-    include/FitTestManager.hpp
-    include/FitTestThreadManager.hpp
+    include/FitTest/Function.hpp
+    include/FitTest/ThreadManager.hpp
+    include/FitTest/ParameterList.hpp
+    include/FitTest/Configuration.hpp
+    include/FitTest/Outputs.hpp
+    include/FitTest/Run.hpp    
     include/SignalFit.hpp
     # Fcn1D 
     include/Fcn1D/Fcn1D.hpp
