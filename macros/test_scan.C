@@ -238,7 +238,7 @@ void test_scan()
         return;
     });
 
-    FitTest::Run(200, config, outputs, fit_window_fcn, 2); 
+    FitTest::Run(200, config, outputs, fit_window_fcn, 1); 
 
     /*new TCanvas; 
     make_brazil_flag_plot(h_m_vs_e2CL); 
