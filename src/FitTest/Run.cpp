@@ -18,6 +18,7 @@
 #include <iostream> 
 #include <cstdlib> 
 #include <stdexcept> 
+#include <chrono> 
 #define DEBUG
 
 namespace peak_search
@@ -28,6 +29,12 @@ namespace FitTest
 namespace {
     constexpr char model_path[] = "data/models/exp_poly_19.dat";
     constexpr double fMinMass{140}, fMaxMass{280};
+
+    std::unique_ptr<std::chrono::time_point<std::chrono::system_clock>> start_time; 
+    // start system clock timer 
+    void start_timer();
+    // get elapsed time in seconds since start of timer 
+    double get_elapsed_seconds(); 
 }; 
 
 /// @brief Draw progress bar 
@@ -77,8 +84,7 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int 
 
     size_t scans_done=0; 
 
-    if (run_verbosity>0)
-        std::cout << "\n staring " << n_trials << " trials..." << std::flush; 
+    if (run_verbosity>0) std::cout << "\n staring " << n_trials << " trials...\n"; 
     TStopwatch stopwatch; 
 
     size_t trials_scheduled{0}; 
@@ -87,6 +93,7 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int 
     unsigned long steps_scheduled{0}; 
     const unsigned long steps_per_task = cfg.params.GetNSteps(); 
     
+    start_timer(); 
     for (size_t t=0; t<cfg.n_threads; t++) {
 
         //create the thread manager 
@@ -108,7 +115,7 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int 
 
                 steps_scheduled = step_1; 
 
-                if (run_verbosity>1) {
+                if (run_verbosity>=1) {
 
                     double fraction_done = ((double)(steps_per_task*trials_scheduled + steps_scheduled))/((double)steps_per_task*n_trials); 
                     if (run_verbosity==1)
@@ -145,12 +152,14 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int 
     //now, we will wait for all threads to be done. 
     for (auto& thread : threads) thread.join(); 
 
+    if (run_verbosity==1) std::cout << "\r" << progress_bar(1., 100) << "\n"; 
+
     double cputime = stopwatch.CpuTime(); 
     double realtime = stopwatch.RealTime(); 
 
     if (run_verbosity>0)
         std::printf("done.\nReal time elapsed: %.3f s, %.3f s cpu time (%.4f ms / step)\n",
-            realtime, cputime, 1e6*cputime/((double)n_trials*steps_per_task)
+            realtime, cputime, 1e3*cputime/((double)n_trials*steps_per_task)
         );
 
 
@@ -169,8 +178,37 @@ void Run(size_t n_trials, Configuration cfg, Outputs outputs, Function fcn, int 
     // because the collection of user thread-managers is a vector constructed in the scope of this function, 
     // they will all automatically be deleted as this function exits (right now). 
 } 
+namespace 
+{
+//__________________________________________________________________________________________________________________________
+void start_timer()
+{
+    using time_point = std::chrono::time_point<std::chrono::system_clock>; 
+    using duration = std::chrono::duration<double, std::milli>; 
 
-std::string progress_bar(double progress, int n_ticks) {
+    if (!start_time) {
+        start_time = std::make_unique<time_point>(std::chrono::system_clock::now()); 
+    }
+}
+//__________________________________________________________________________________________________________________________
+double get_elapsed_seconds()
+{
+    using time_point = std::chrono::time_point<std::chrono::system_clock>; 
+    using duration = std::chrono::duration<double, std::milli>; 
+
+    auto now = std::chrono::system_clock::now(); 
+
+    if (!start_time) return numbers::nan; 
+
+    return duration{ now - *start_time.get() }.count() / 1.e3; 
+}
+}
+//__________________________________________________________________________________________________________________________
+//__________________________________________________________________________________________________________________________
+//__________________________________________________________________________________________________________________________
+std::string progress_bar(double progress, int n_ticks) 
+{
+
     std::ostringstream oss; 
     oss  << "["; 
     double n_steps_d = (double)n_ticks;
@@ -179,9 +217,17 @@ std::string progress_bar(double progress, int n_ticks) {
     for (int i=0; i<n_ticks; i++) { oss << (i<=n_ticks_full ? "=" : " "); }
 
     oss << Form("]    %4.1f%%", progress*100.); 
+
+    //measure the time, and report it. 
+    double seconds = get_elapsed_seconds(); 
+
+    int minutes = std::floor( seconds / 60 ); 
+    seconds = seconds - minutes*60; 
+    oss << Form("   elapsed: (%02i:%02.0f)", minutes, seconds); 
+
     return oss.str(); 
 }
-
+//__________________________________________________________________________________________________________________________
 void copy_result(TObject* source, TObject* dest)
 {
     const auto src_class = source->IsA(); 
@@ -220,6 +266,7 @@ void copy_result(TObject* source, TObject* dest)
     Error(__func__, "Type of output TObject passed is not supported. Type: %s", src_class->GetName()); 
     return; 
 }
+//__________________________________________________________________________________________________________________________
 
 }
 }
