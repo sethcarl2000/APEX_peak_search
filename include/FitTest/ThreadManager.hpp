@@ -1,11 +1,14 @@
-#ifndef peak_search_FitTestThreadManager_hpp
-#define peak_search_FitTestThreadManager_hpp
+#ifndef peak_search_FitTest_ThreadManager_hpp
+#define peak_search_FitTest_ThreadManager_hpp
 
-#include <FitTestFunction.hpp>
+#include <FitTest/Function.hpp>
+#include <FitTest/Configuration.hpp>
+#include <FitTest/ParameterList.hpp>
+#include <FitTest/Outputs.hpp>
+#include <FitTest/Run.hpp>
 #include <Histo1D.hpp>
+#include <Fcn1D/Fcn1D.hpp>
 // ROOT 
-#include <TH1D.h>  
-#include <TH2D.h> 
 #include <TRandom3.h> 
 #include <TObject.h> 
 // stdlib
@@ -16,62 +19,75 @@
 
 namespace peak_search
 {
+namespace FitTest
+{
 
-class FitTestManager; 
-
-class FitTestThreadManager {
+class ThreadManager {
 private: 
+
+    friend void Run(size_t, Configuration, Outputs, Function);  
+
     size_t fThreadId; 
 
-    FitTestManager* fParent; 
+    Function fTestFcn; 
 
-    FitTestFunction fTestFcn; 
+    ParameterList fParamList; 
 
-    //histograms to fill
-    std::vector<std::unique_ptr<TH1D>> fTH1D; 
-    std::vector<std::unique_ptr<TH2D>> fTH2D; 
+    // current step 
+    unsigned long fStep{0}; 
 
-    std::map<const TH1*, TH1*> fHistMap; 
+    //minimum / maximum mass values in the BG model 
+    static constexpr double fMinMass{140}, fMaxMass{280};
 
-    enum class htype { kTH1D, kTH2D }; 
+    // list of our thread-local copies of user-provided outputs 
+    std::vector<std::unique_ptr<TObject>> fOutputs;  
 
-    void make_threadlocal_hist_copy(TObject* source, htype type); 
+    Configuration fConfig; 
 
-    //current test mass
-    double fMass; 
+    double fStats; 
 
-    //random number generator
+    Fcn1D* fBackgroundModel;
+
+    //thread-local random number generator
     std::unique_ptr<TRandom3> fMyRand; 
 
+    /// make thread-local copy of TObject. place it in the list of outputs.  
+    void AddOutput(TObject* source); 
 
+    // execute a series of steps, in the inclusive range: [step0, step1-1]
+    void ExecuteStepRange(unsigned long step0, unsigned long step1); 
 
 public: 
+
     //we've private-ed the constructor, so only the 'FitTestManager' can make copies of this object. 
-    FitTestThreadManager(
+    ThreadManager(
         size_t thread_id, 
-        const FitTestFunction& fcn, 
-        FitTestManager* parent, 
-        const std::vector<TH1D*>& f_TH1D, 
-        const std::vector<TH2D*>& f_TH2D
+        const Configuration& config, 
+        const Function& fcn, 
+        Fcn1D* background_model, 
+        const std::vector<TObject*>& outputs
     );  
 
-    //provide a randomly sampled histogram
-    Histo1D get_spectrum(double xmin, double xmax); 
+    /// @brief Provide a randomly-sampled histogram
+    /// @param n_bins number of bins
+    /// @param xmin low-edge of generated spectrum
+    /// @param xmax hi-edge of generated spectrum 
+    /// @return a Histo1D object with randomly-sampled bin values 
+    Histo1D GetSpectrum(size_t n_bins, double xmin, double xmax); 
 
-    // get thread-local copy of user TH1D
-    TH1D* GetUserTH1D(size_t index);
+    /// @brief Get access to thread-local copy to user-provided output. 
+    /// @tparam T Output type 
+    /// @param id 'id' of output in list (See FitTest::Output class)
+    /// @return Ptr to thread-local copy of output 
+    template<typename T> T* GetOutput(size_t id); 
 
-    // get thread-local copy of user TH1D
-    TH2D* GetUserTH2D(size_t index);
-
-    //run a scan of the mass spectrum at the given mass
-    void run_test(double mass); 
-
-    //get the current test mass
-    double get_mass() const { return fMass; } 
+    /// @brief Get access to a user-defined parameter list for this step. 
+    /// @return current value of parameter 
+    std::vector<double> GetParamList() const { return fParamList.GetParamList(fStep); }
 };
 
-};
+}
+}
 
 
 #endif
