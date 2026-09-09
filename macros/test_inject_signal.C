@@ -31,25 +31,21 @@ double mass_resolution(double mass_hypothesis)
     return 1. + (mass_hypothesis - 140.) * ((0.8 - 1.0)/(270 - 140)); 
 }
 
-void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.47724987);
+void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.47724987); 
 
+//void fit_window(peak_search::FitTestThreadManager* mgr);
 ///________________________________________________________________________________________________________
-void test_scan()
+void test_inject_signal()
 {
     using namespace peak_search; 
 
-    const double min_mass = 145.; 
-    const double max_mass = 275.; 
+    const double min_mass = 150.; 
+    const double max_mass = 270.; 
 
     int n_steps = 400; 
     int n_bins  = n_steps/4; 
 
     //pick a reasonable number of bins
-    FitTest::Configuration config; 
-
-    config.total_stats = 45e6; 
-
-    config.n_steps_per_task = 200; 
 
     auto h_m_vs_mu = new TH2D(
         "h_signal", "Best-fit signal parameter '#mu' vs m;signal mass hypothesis (MeV);best-fit #mu", 
@@ -80,8 +76,11 @@ void test_scan()
         50, 0., 1.
     );  
 
+    FitTest::Configuration config; 
 
-    //config.n_threads = 1; 
+    config.total_stats = 76e6; 
+
+    config.n_steps_per_task = 200; 
 
     auto p_mass = config.params.Append(400, min_mass, max_mass);   
 
@@ -108,10 +107,6 @@ void test_scan()
         int n_bins = (m_max - m_min)/(0.5); 
 
         const auto spectrum = mgr->GetSpectrum(n_bins, mass - window_size*resolution, mass + window_size*resolution);
-
-        /*double N{0.}; 
-        for (const auto& bin : spectrum.bins) N += bin.N; 
-        std::printf("mass range: [%5.1f, %5.1f], stats: %+.3e\n", m_min,m_max, N); */ 
 
         auto gaussian_fcn = peak_search::Gauss(0, mass, resolution); 
 
@@ -151,7 +146,9 @@ void test_scan()
 
     FitTest::Run(200, config, outputs, fit_window_fcn); 
 
-    //now, we're going to do one **real** scan (still on the accidental spectrum)
+    /*new TCanvas; 
+    make_brazil_flag_plot(h_m_vs_e2CL); 
+    return;*/  
 
     new TCanvas;
     gStyle->SetOptStat(0); 
@@ -165,8 +162,7 @@ void test_scan()
     h_m_vs_uCL->Draw("col"); 
 
     new TCanvas;
-    h_m_vs_e2CL->SetTitle(Form("CL=0.95 upper limits on #varepsilon^{2}, %.1f x 10^{6} events;signal mass hypothesis (MeV);#epsilon^{2}, CL=0.95", config.total_stats/1e6));
-    make_brazil_flag_plot(h_m_vs_e2CL); 
+    h_m_vs_e2CL->Draw("col"); 
 
     new TCanvas;
     h_pQ0->SetMaximum( h_pQ0->GetMaximum()*1.5 );
@@ -174,6 +170,7 @@ void test_scan()
     h_pQ0->Draw("E"); 
 }
 ///________________________________________________________________________________________________________
+
 void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.47724987)
 {
     //go through each bin, and find the cumulative stats corresponding to each cl given. 
@@ -247,7 +244,8 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
 
 
     auto g2 = new TGraphErrors(n_bins_x, x.data(), y_cl2.data(), nullptr, y_err_cl2.data()); 
-    g2->SetTitle(hist->GetTitle()); 
+    
+    g2->SetTitle("CL_{s} 0.95 Upper limit on Dark Photon Coupling #varepsilon^{2} (76 M coinc events);mass hypothesis (MeV);#varepsilon^{2} (0.95 CL_{s} upper-limit)"); 
     
     g2->SetFillColor(kYellow);
     g2->Draw("A3"); 
@@ -257,7 +255,6 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
     g1->Draw("3"); 
 
     auto gmed = new TGraph(n_bins_x, x.data(), y_med.data()); 
-    gmed->SetLineStyle(kDashed); 
     gmed->Draw("SAME"); 
 
     auto legend = new TLegend; 

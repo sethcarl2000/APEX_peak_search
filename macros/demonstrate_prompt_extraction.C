@@ -1,4 +1,5 @@
 
+#include "get_Pprompt_function.h"
 // ROOT headers
 #include <TH1D.h>
 #include <TH2D.h>
@@ -14,6 +15,7 @@
 // stdlib 
 #include <cmath> 
 #include <vector> 
+#include <functional> 
 
 namespace {
 
@@ -71,7 +73,7 @@ void demonstrate_prompt_extraction()
         
         //generate backgroud x-pos 
         do {
-            evt.x = +1.5 + rand.Gaus()*2.;
+            evt.x = -1.5 + rand.Gaus()*1.;
             evt.x += -0.4*std::sin(evt.x / 5.); 
         } while (evt.x < xrange[0] || evt.x > xrange[1]);
 
@@ -80,6 +82,17 @@ void demonstrate_prompt_extraction()
 
     auto hist_p_s = new TH1D("h_ps", "P_{prompt} - Signal;p_{prompt}", n_bins, 0., 1.); 
     auto hist_p_b = new TH1D("h_pb", "P_{prompt} - Background;p_{prompt}", n_bins, 0., 1.); 
+
+    auto hist_x_vs_t = new TH2D("hs_x_t", ";inv. mass;T_R - T_L;", 
+        n_bins, xrange[0], xrange[1], 
+        n_bins, trange[0], trange[1]
+    ); 
+
+    auto hist_xtp = new TH2D("hs_x_t", ";inv. mass;T_R - T_L;P_{prompt}", 
+        n_bins, xrange[0], xrange[1], 
+        n_bins, trange[0], trange[1]
+    ); 
+
 
     auto h_m_p = new TH2D("h_m_p", ";x;p_{prompt}", n_bins, xrange[0], xrange[1], n_bins, 0, 1); 
 
@@ -127,6 +140,8 @@ void demonstrate_prompt_extraction()
         h_bt->Fill( evt.t ); 
         hist_p_b->Fill( pi );  
         
+        hist_x_vs_t->Fill( evt.x, evt.t ); 
+
         h_coinc_x->Fill( evt.x, pi ); 
         h_err_x  ->Fill( evt.x, pi*(2. - pi) ); 
     }
@@ -143,9 +158,13 @@ void demonstrate_prompt_extraction()
         h_st->Fill( evt.t ); 
         hist_p_s->Fill( pi );
 
+        hist_x_vs_t->Fill( evt.x, evt.t ); 
+
         h_coinc_x->Fill( evt.x, pi ); 
         h_err_x  ->Fill( evt.x, pi*(2. - pi) ); 
     }
+
+    auto P_calc = get_PpromptCalculator(hist_x_vs_t, st_sigma, st_mean, 0.2, 3.); 
 
     double ns_total = ns_lo + ns_hi; 
     double 
@@ -166,6 +185,7 @@ void demonstrate_prompt_extraction()
 
     std::vector<double> bin_x; bin_x.reserve(n_bins); 
     xax = h_sx->GetXaxis();
+    auto yax = hist_x_vs_t->GetYaxis(); 
     for (int i=1; i<=n_bins; i++) bin_x.push_back( xax->GetBinCenter(i) );
     
     std::vector<double> bin_avg; bin_avg.reserve(n_bins); 
@@ -187,12 +207,36 @@ void demonstrate_prompt_extraction()
 
         double N = n_s;
 
-        bin_avg.push_back( N );
-        bin_rms.push_back( std::sqrt(N) );
+        /*bin_avg.push_back( N );
+        bin_rms.push_back( std::sqrt(N) );*/ 
+
     }
+
+    for (int i=1; i<=xax->GetNbins(); i++) {
+        double N=0.; 
+        double mass = xax->GetBinCenter(i);
+        for (int j=1; j<=yax->GetNbins(); j++) {
+            double t = yax->GetBinCenter(j); 
+            double p = P_calc(mass, t); 
+            N += p * hist_x_vs_t->GetBinContent(i,j); 
+            //std::printf("m,t: [%+4.1f, %+5.1f]     P: %.4f,     N: %.3e\n", mass,t, P_calc(mass,t), hist_x_vs_t->GetBinContent(i,j)); 
+            hist_xtp->Fill( mass, t, p ); 
+        }
+        bin_x.push_back(mass);
+        bin_avg.push_back(N); 
+    }
+
     // make signal 
     auto stack_t = new THStack("stack_t", "Time"); 
     auto stack_x = new THStack("stack_x", "Position"); 
+
+    new TCanvas; 
+    gStyle->SetPalette(kGreyScale); 
+    TColor::InvertPalette(); 
+    hist_x_vs_t->Draw("col"); 
+
+    new TCanvas; 
+    hist_xtp->Draw("colz"); 
 
     new TCanvas; 
     stack_t->Add(h_bt); 
@@ -207,10 +251,14 @@ void demonstrate_prompt_extraction()
     stack_x->Add(h_sx); 
     stack_x->Add(h_bx); 
     stack_x->Draw(); 
-
+    
     auto g = new TGraph(n_bins, bin_x.data(), bin_avg.data()); 
-    g->SetFillColor(kGray); 
+    //g->SetFillColor(kGray); 
+    g->SetTitle("Reconstructed no. prompt events;inv. mass;"); 
     g->Draw("SAME"); 
+
+    new TCanvas; 
+    g->Draw(); 
 
     new TCanvas; 
     auto stack_p = new THStack("stack_p", "Coinc values"); 
