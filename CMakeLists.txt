@@ -31,6 +31,7 @@ set(sources
     src/make_histogram_copy.cpp
     src/solve_for_CLs.cpp
     src/compute_statistics.cpp
+    src/compute_epsilon2.cpp
     src/FitTest/ThreadManager.cpp
     src/FitTest/ParameterList.cpp
     src/FitTest/Run.cpp
@@ -60,6 +61,7 @@ set(headers
     include/generate_toy_events.hpp
     include/make_histogram_copy.hpp
     include/compute_statistics.hpp
+    include/compute_epsilon2.hpp
     include/solve_for_CLs.hpp
     include/HistoBin.hpp
     include/Histo1D.hpp

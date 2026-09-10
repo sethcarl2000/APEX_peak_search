@@ -5,6 +5,7 @@
 #include "fit_parameter.hpp"
 #include <newton_optimizer.hpp>
 #include <make_histogram_copy.hpp>
+#include <compute_epsilon2.hpp>
 #include <Fcn1D/FcnSum.hpp>
 //Eigen
 #include <eigen3/Eigen/Core> 
@@ -25,26 +26,6 @@ namespace peak_search
 #ifdef DEBUG
 #define DEBUG_STATS
 #endif 
-
-constexpr double muon_mass = 105.66; // MeV; 
-constexpr double electron_mass = 0.501; // MeV; 
-
-/// @return the approximate branch ratio for A'-> e+e- (as opposed to A'->mu+mu-)
-double get_branch_ratio(double mass)
-{
-    if (mass < 2.*muon_mass) return 1.; 
-
-    double amp_electron = std::sqrt( 1. - 4.*(electron_mass*electron_mass)/(mass*mass) ) ; 
-    double amp_muon     = std::sqrt( 1. - 4.*(muon_mass*muon_mass)/(mass*mass) ) ; 
-    
-    return amp_electron / (amp_electron + amp_muon); 
-}
- 
-/// @return a _very_ rough estimate of the fraction of our background events that are the 'radiative' type of gamma->e+e- production. 
-double estimate_radiative_fraction(double mass)
-{
-    return 0.205 + (mass - 120)* ((0.155 - 0.205)/(220 - 120)); 
-}
 
 
 FitResult<FitStats> compute_statistics(const Histo1D& data, Fcn1D& fcn_s, Fcn1D& fcn_b, double mass, double CLs, double mass_window_size)
@@ -179,7 +160,7 @@ FitResult<FitStats> compute_statistics(const Histo1D& data, Fcn1D& fcn_s, Fcn1D&
 
     double mu_CL = mu_mle   -   sigma*normal_quantile(CLs * CL_b, 1.); 
 
-    // get the (expected) background rate for this fcn.
+    /*/ get the (expected) background rate for this fcn.
     // so we set the signal rate to 0: 
     fcn.GetParams()[0] = 0.; 
 
@@ -192,8 +173,9 @@ FitResult<FitStats> compute_statistics(const Histo1D& data, Fcn1D& fcn_s, Fcn1D&
     double epsilon2_CL  = (expect_s / expect_b) * (mass_window_size/mass) * (2./137.) / (3.*3.1415926536); 
 
     //now, apply some corrections. 
-    epsilon2_CL = epsilon2_CL / ( get_branch_ratio(mass) * estimate_radiative_fraction(mass) ); 
+    epsilon2_CL = epsilon2_CL / ( get_branch_ratio(mass) * estimate_radiative_fraction(mass) ); */ 
 
+    double epsilon2_CL = compute_epsilon2(fcn_b, mu_CL, mass, mass_window_size); 
     
     FitResult<FitStats> result;
     
