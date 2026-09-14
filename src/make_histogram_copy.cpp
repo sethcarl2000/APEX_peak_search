@@ -23,15 +23,14 @@ Histo1D make_histogram_copy(TH1D* hist, double xmin, double xmax)
 
     
     auto xax = hist->GetXaxis();
-
     int min_bin, max_bin; 
-
+    
     //find minimum bin
     if (numbers::is_nan(xmin)) {
         min_bin = 1;  
     } else {
-        xmin = std::max(xmin, xax->GetXmin());
-        min_bin = xax->FindBin(xmax);
+        xmin = std::max(xmin, xax->GetXmin()); 
+        min_bin = xax->FindBin(xmin);
     }
 
     //find maximum bin
@@ -44,15 +43,17 @@ Histo1D make_histogram_copy(TH1D* hist, double xmin, double xmax)
 
     copy.bins.reserve(max_bin - min_bin + 1);
 
-    double x = xax->GetXmin(); 
     double dx = (xax->GetXmax() - xax->GetXmin())/((double)xax->GetNbins()); 
+
+    double x = xax->GetBinCenter(min_bin) - dx/2.; 
 
     for (int i=min_bin; i<=max_bin; i++) { 
         copy.bins.emplace_back( 
-            x,          //xmin
-            x += dx,    //xmax
+            x,         //xmin
+            x + dx,    //xmax
             hist->GetBinContent(i) //bin content 
         );
+        x += dx; 
     }
 
     return copy; 
