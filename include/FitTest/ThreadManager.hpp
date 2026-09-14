@@ -84,6 +84,9 @@ public:
     /// @brief Get access to a user-defined parameter list for this step. 
     /// @return current value of parameter 
     std::vector<double> GetParamList() const { return fParamList.GetParamList(fStep); }
+
+    /// @return ptr to thread-local random number generator. 
+    TRandom3* GetRand() { return fMyRand.get(); } 
 };
 
 }
