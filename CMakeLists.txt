@@ -42,6 +42,8 @@ set(sources
     src/Fcn1D/LegendrePoly.cpp
     src/Fcn1D/Gauss.cpp
     src/Fcn1D/FcnSum.cpp
+    # GP
+    src/GP/Compute.cpp
 )
 
 set(headers 
@@ -79,6 +81,9 @@ set(headers
     include/Fcn1D/LegendrePoly.hpp
     include/Fcn1D/Gauss.hpp
     include/Fcn1D/FcnSum.hpp
+    # GP
+    include/GP/Compute.hpp
+    include/GP/Point.hpp
 )
 
 #---------------------------------------------------------
