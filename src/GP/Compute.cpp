@@ -19,6 +19,12 @@ namespace GP
 
 void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, const Fcn1D& kernel)
 {
+    auto wrapper = [&kernel](double x1, double x2){ return kernel(x1-x2); };
+    Compute(inputs, outputs, wrapper); 
+}
+//_____________________________________________________________________________________________________
+void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, const std::function<double(double,double)>& kernel)
+{
     if (outputs.empty()) {
         std::ostringstream oss; 
         oss << "in <"<<__func__<<">: No output points given."; 
@@ -48,19 +54,17 @@ void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, cons
     MatrixXd B(n_inputs, n_inputs); 
     VectorXd Y(n_inputs); 
 
-    const double max_variance = kernel(0.); 
-    
     for (int i=0; i<n_inputs; i++) {
 
-        B(i,i) = max_variance + inputs[i].variance; 
-    
         double xi = inputs[i].x;   
         Y(i)      = inputs[i].y; 
-        
+
+        B(i,i) = kernel(xi,xi) + inputs[i].variance; 
+            
         for (int j=i+1; j<n_inputs; j++) {
 
             double xj = inputs[j].x; 
-            B(i,j) = kernel(xi - xj); 
+            B(i,j) = kernel(xi,xj); 
 #ifdef DEBUG
             std::cout << "k("<<xi<<"-"<<xj<<") = " << B(i,j) << "\n";
 #endif
@@ -85,13 +89,13 @@ void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, cons
         double x = pt.x; 
 
         VectorXd K(n_inputs); 
-        for (int j=0; j<n_inputs; j++) K(j) = kernel(x - inputs[j].x);
+        for (int j=0; j<n_inputs; j++) K(j) = kernel(x,inputs[j].x);
 
         VectorXd J = L.solve(K); 
 
         pt.y = J.dot(Y); 
 
-        pt.variance = max_variance - J.dot(K); 
+        pt.variance = kernel(x,x) - J.dot(K); 
     }
 }
 
