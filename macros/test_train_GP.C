@@ -1,24 +1,31 @@
 
-#include <GP/Point.hpp>
-#include <GP/Compute.hpp>
+#include <GP.hpp>
 #include <Histo1D.hpp> 
 #include <make_histogram_copy.hpp>
 #include <numbers.hpp>
 // NLopt (nonlinear optimization lib)
 #include <nlopt.hpp> 
+// Minuit 
+#include <Math/Factory.h> 
+#include <Math/Minimizer.h>
+#include <Math/Functor.h>
 // ROOT
 #include <TH1D.h> 
+#include <TH2D.h> 
+#include <TAxis.h> 
 #include <TRandom3.h>
 #include <TGraph.h>
 #include <TGraphErrors.h>
 #include <TLine.h> 
 #include <TError.h> 
 #include <TCanvas.h>
+#include <TEllipse.h>
 // stdlib 
 #include <vector> 
 #include <cmath> 
 #include <functional> 
 #include <mutex> 
+#include <memory> 
 
 #define DEBUG
 
@@ -38,22 +45,16 @@ using nlopt_objective_fcn = double(*)(unsigned, const double*, double*, void*);
 /// @return average chi-square fit to blind window using GP with given hyperparams
 double blind_window_fit(unsigned n, const double* params, double* grad, void* hist);
 
-struct Kernel {
-    std::function<double(double,double,const std::vector<double>&)> fcn{
-        [](double,double,const std::vector<double>&){ return peak_search::numbers::nan; }
-    }; 
-    std::vector<double> params{}; 
 
-    double operator()(double x1, double x2) const { return fcn(x1,x2,params); }
-}; 
-static_assert(std::is_default_constructible_v<Kernel>); 
+double marginal_nll(unsigned n, const double* params, double* grad, void* data); 
+
 
 // generate data to be added to histogram 
 struct blind_window_fitdata {
     // data
     std::vector<peak_search::GP::Point> data; 
     // Kernel function
-    Kernel kernel{}; 
+    peak_search::GP::Kernel kernel{}; 
     // blind window size (number of bins)
     int blind_window_size;
     // minimum and maximum bins to fit  
@@ -141,13 +142,26 @@ void test_train_GP()
     auto g = new TGraphErrors(pts_x.size(), pts_x.data(), pts_y.data(), nullptr, pts_stddev.data()); 
     g->Draw(); 
 
-    std::vector<double> params{1., 1.}; 
+    int n_tests=200; 
 
-    Kernel square_exp_kernel{
+    std::vector<double> param_range_amplitude{0.01, 10000.}; 
+    std::vector<double> param_range_length{0.02, 2.5}; 
+
+    auto hist_param_space = new TH2D("h_param_space", "Parameter space;log Amplitude;log Length Scale;NLL", 
+        n_tests, std::log(param_range_amplitude[0]), std::log(param_range_amplitude[1]), 
+        n_tests, std::log(param_range_length[0]),    std::log(param_range_length[1])
+    ); 
+
+    auto xax = hist_param_space->GetXaxis(); 
+    auto yax = hist_param_space->GetYaxis(); 
+ 
+    std::vector<double> params{std::log(1.), std::log(0.8)};
+
+    GP::Kernel square_exp_kernel{
         [](double x1, double x2, const std::vector<double>& params){
             
             if (params.size() != 2) return peak_search::numbers::nan; 
-            double amplitude{params[0]}, length_scale{params[1]}; 
+            double amplitude{std::exp(params[0])}, length_scale{std::exp(params[1])}; 
             double arg = (x1 - x2)/length_scale; 
             return amplitude * std::exp( -0.5*arg*arg ); 
         }, params
@@ -156,8 +170,76 @@ void test_train_GP()
     blind_window_fitdata fitdata{
         all_points, square_exp_kernel, 8, 1
     };
+    //double chi2 = blind_window_fit(2, params.data(), nullptr, &fitdata); 
+    //return; 
+    ROOT::Math::Minimizer *minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad"); 
 
-    blind_window_fit(2, params.data(), nullptr, &fitdata); 
+    minimizer->SetMaxFunctionCalls(1e7); 
+    minimizer->SetMaxIterations(1e6); 
+    minimizer->SetTolerance(1e-5);
+    minimizer->SetPrintLevel(3);    
+
+    auto nll_computer = std::make_unique<GP::LikelihoodComputer>(all_points, square_exp_kernel); 
+
+    double nll; 
+
+    auto f_fcn = [&nll_computer](const double *par) { return nll_computer->ComputeNLL(par); };
+
+    auto f_objective = ROOT::Math::Functor(f_fcn, 2); 
+
+    minimizer->SetFunction(f_objective); 
+
+    minimizer->SetVariable(0, "log_Amplitude", params[0], 1e-4); 
+    minimizer->SetVariable(1, "log_Length",    params[1], 1e-5); 
+    
+    auto fit_result = minimizer->Minimize(); 
+
+    if (!fit_result) {
+        Error(__func__, "Something went wrong with the fit result!");   
+        return; 
+    }
+
+    //copy parameter data 
+    if (auto pars = minimizer->X(); pars!=nullptr) 
+        params.assign(pars, pars+2); 
+
+    nll = minimizer->MinValue(); 
+
+    std::printf("optimal params: amplitude=%.1f, length=%.4f      NLL=%.3e\n", 
+        std::exp(params[0]), std::exp(params[1]), nll
+    ); 
+
+    std::vector<double> cov_mat_elems(params.size()*params.size(), 0.);
+    
+    //get the coviariance matrix 
+    Eigen::MatrixXd cov(params.size(), params.size()); 
+    minimizer->GetCovMatrix(cov.data()); 
+
+    //get eigenvectors / eigenvalues 
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigen_solver(cov); 
+
+    if (eigen_solver.info() != Eigen::Success) {
+        Error(__func__, "Something went wrong finding eigenvectors of covariance matrix!"); 
+        return; 
+    }
+    Eigen::MatrixXd e_vecs = eigen_solver.eigenvectors(); 
+    Eigen::VectorXd e_vals = eigen_solver.eigenvalues(); 
+
+    std::cout << "cov. matrix: \n"; 
+    for (int i=0; i<params.size(); i++) {
+        for (int j=0; j<params.size(); j++) {
+            std::cout << cov(i,j) << " "; 
+        }
+        std::cout << "\n"; 
+    }
+
+    std::cout << "Eigenvalues / vectors: \n"; 
+    for (int i=0; i<params.size(); i++) {
+        std::cout << " " << e_vals(i) << "      { "; 
+        for (int j=0; j<params.size(); j++) std::cout << e_vecs(i,j) <<  " "; 
+        std::cout << "}\n"; 
+    }
+
 }
 //_____________________________________________________________________________________________________________________
 double blind_window_fit(unsigned n, const double* params, double* grad, void* _d) 
@@ -271,13 +353,14 @@ double blind_window_fit(unsigned n, const double* params, double* grad, void* _d
 
         //make the graph of all points
         auto g_pts = new TGraphErrors(n_bins, pts_x.data(), pts_y.data(), nullptr, pts_err.data()); 
+        g_pts->SetMarkerStyle(kPlus); 
         g_pts->Draw("A P Z");
         
         auto g_pred = new TGraphErrors(window_size, gp_x.data(), gp_y.data(), nullptr, gp_error.data()); 
 
-        g_pred->SetFillColor(kGray);
+        g_pred->SetFillColorAlpha(kGray, 0.4); 
         g_pred->SetLineStyle(0); 
-        g_pred->Draw("SAME 3");
+        g_pred->Draw("SAME 3"); 
 
         auto g_pred_line = new TGraph(window_size, gp_x.data(), gp_y.data()); 
         g_pred_line->Draw("SAME L");
@@ -292,6 +375,18 @@ double blind_window_fit(unsigned n, const double* params, double* grad, void* _d
     return avg_chi2/((double)n_trials); 
 }
 //_____________________________________________________________________________________________________________________
+double marginal_nll(unsigned n, const double* params, double* grad, void* data)
+{
+    using namespace peak_search; 
+
+    auto computer = (GP::LikelihoodComputer*)data; 
+
+    if (!computer) {
+        throw std::invalid_argument("in <marginal_nll>: computer ptr is null"); 
+        return peak_search::numbers::nan; 
+    }
+    return computer->ComputeNLL(params); 
+}
 //_____________________________________________________________________________________________________________________
 //_____________________________________________________________________________________________________________________
 //_____________________________________________________________________________________________________________________
