@@ -1,5 +1,4 @@
-#include <GP/Point.hpp>
-#include <GP/Compute.hpp>
+#include <GP.hpp>
 // nlopt
 #include <nlopt.h> 
 // Eigen
@@ -19,11 +18,11 @@ namespace GP
 
 void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, const Fcn1D& kernel)
 {
-    auto wrapper = [&kernel](double x1, double x2){ return kernel(x1-x2); };
+    Kernel wrapper{ [&kernel](double x1, double x2, const std::vector<double>&){ return kernel(x1-x2); } };
     Compute(inputs, outputs, wrapper); 
 }
 //_____________________________________________________________________________________________________
-void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, const std::function<double(double,double)>& kernel)
+void Compute(const std::vector<Point>& inputs, std::vector<Point>& outputs, const Kernel& kernel)
 {
     if (outputs.empty()) {
         std::ostringstream oss; 
