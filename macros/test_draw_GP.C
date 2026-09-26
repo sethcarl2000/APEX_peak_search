@@ -1,5 +1,4 @@
-#include <GP/Point.hpp>
-#include <GP/Compute.hpp>
+#include <GP.hpp>
 #include <Fcn1D/Gauss.hpp>
 // ROOT headers
 #include <TGraph.h> 
