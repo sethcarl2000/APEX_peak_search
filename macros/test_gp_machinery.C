@@ -3,6 +3,10 @@
 #include <Histo1D.hpp> 
 #include <make_histogram_copy.hpp>
 #include <numbers.hpp>
+// analysis_utils lib
+#include <analysis_utils/task.hpp>
+#include <analysis_utils/ROOT.hpp>
+#include <analysis_utils/thread_pool.hpp>
 // NLopt (nonlinear optimization lib)
 #include <nlopt.hpp> 
 // Eigen 
@@ -23,6 +27,7 @@
 #include <TCanvas.h>
 #include <TEllipse.h>
 #include <TFile.h>
+#include <TStopwatch.h> 
 // stdlib 
 #include <thread> 
 #include <vector> 
@@ -31,7 +36,6 @@
 #include <mutex> 
 #include <memory> 
 
-#define DEBUG
 
 /// @brief The objective function to be minimized by 'NLopt' routines 
 /// @param n size of parameter-space (size of 'params' array)
@@ -51,7 +55,6 @@ double blind_window_fit(unsigned n, const double* params, double* grad, void* hi
 
 
 double marginal_nll(unsigned n, const double* params, double* grad, void* data); 
-
 
 // generate data to be added to histogram 
 struct blind_window_fitdata {
@@ -116,14 +119,24 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     params.data = make_histogram_copy(hist); 
 
-    std::vector<double> pars{std::log(7.), std::log(2.)}; 
+    std::vector<double> pars{0., -2.}; 
 
-    params.kernel = GP::Kernel{
+
+    /// Param definitions: 
+    /// par[0] = log RMS slope log(A / sigma^2)
+    /// par[1] = log characteristic length scale log(sigma)
+    params.kernel = GP::Kernel{ 
         [](double x1, double x2, const std::vector<double>& params){
             
             if (params.size() != 2) return peak_search::numbers::nan; 
-            double amplitude{std::exp(params[0])}, length_scale{std::exp(params[1])}; 
-            double arg = (x1 - x2)/length_scale; 
+
+            double log_rms_slope = params[0]; 
+            double log_sigma     = params[1]; 
+
+            double sigma = std::exp(log_sigma); 
+            double amplitude = std::exp(2.*log_rms_slope) * sigma; 
+
+            double arg = (x1 - x2)/sigma; 
             return amplitude * std::exp( -0.5*arg*arg ); 
         }, pars
     };
@@ -140,6 +153,8 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
         Error(__func__, "Something went wrong with the GP training. what(): %s", params.status.c_str()); 
     }
 
+    //return; 
+
     // scan 2d parameter space 
 
     auto all_points = GP::Normalize_points(params.data); 
@@ -147,10 +162,13 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     int n_bins = 200; 
 
-    auto hist_param_space = new TH2D("h_data", "Parameter space;log A;log Length;- log L",  
-        n_bins, std::log(0.002), std::log(1e6), 
-        n_bins, std::log(0.0045), std::log(2.8)
+    auto hist_param_space = new TH2D("h_data", "Parameter space;log RMS slope (#sqrt{A/#sigma^{2}});log Length scale (#sigma);- log L",  
+        n_bins, std::log(0.04), std::log(4000), 
+        n_bins, std::log(0.004), std::log(2.8)
     ); 
+
+    double dx = hist_param_space->GetXaxis()->GetBinWidth(1); 
+    double dy = hist_param_space->GetYaxis()->GetBinWidth(1); 
 
     double max_nll = 2.5e3; 
 
@@ -158,59 +176,54 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
     auto yax = hist_param_space->GetYaxis(); 
 
     struct nll_pt { double x, y, val; };
-    std::vector<nll_pt> nll_pts; nll_pts.reserve(n_bins*n_bins); 
-    for (int ix=1; ix<=n_bins; ix++)
-        for (int iy=1; iy<=n_bins; iy++)
-            nll_pts.emplace_back( xax->GetBinCenter(ix), yax->GetBinCenter(iy), 0. ); 
 
+    using namespace analysis_utils;    
+    auto plist = task::param_list<nll_pt>(); 
 
-    const size_t total_points = nll_pts.size(); 
+    plist.add(&nll_pt::x, std::log(0.04)+dx/2., std::log(4000)-dx/2., n_bins); 
+    plist.add(&nll_pt::y, std::log(0.004)+dy/2., std::log(2.8)-dy/2., n_bins); 
 
-    const size_t n_threads = std::thread::hardware_concurrency(); 
+    task::config_t cfg; 
 
-    size_t tasks_per_thread = total_points/n_threads; 
+    cfg.chunk_size = 32; 
+    cfg.verbosity = 1;
+    //cfg.n_threads = 32; 
 
-    std::vector<std::thread> threads; threads.reserve(n_threads); 
+    auto t_hist = root::threadlocal_hist(hist_param_space); 
 
-    std::printf("total points: %zi\n", total_points); 
+    thread_pool pool; 
 
-    size_t start=0; 
-    for (size_t t=0; t<n_threads; t++) {
+    auto t_cptr = pool.MakeThreadLocalObj(*nll_computer.get()); 
+    auto t_pars = pool.MakeThreadLocalObj(pars); 
 
-        size_t end = start + tasks_per_thread + (total_points % n_threads > t ? 1 : 0);
+    TStopwatch timer; 
+    task::scan_params(plist, [&t_cptr,&t_pars,max_nll,&t_hist](const nll_pt *__restrict point, size_t t){
 
-        const auto cptr_const = nll_computer.get(); 
+        //
+        auto& mpars = t_pars(t);
+        auto& my_cptr = t_cptr(t); 
+        if (mpars.empty()) return; 
+        mpars[0] = point->x; 
+        mpars[1] = point->y; 
+        double nll = my_cptr.ComputeNLL(mpars.data());   
+        if (!(peak_search::numbers::is_nan(nll) || nll > max_nll)) { 
+            t_hist(t)->Fill( point->x, point->y, nll ); 
+        }
+        
+    }, cfg); 
 
-        threads.emplace_back([&nll_pts,t,cptr_const,start,end,max_nll]{
+    auto real_time = timer.RealTime(); 
+    std::printf("time taken for %zi steps: %.4f (%.4f ms / step)\n", 
+        plist.get_n_steps(), 
+        real_time, 
+        (real_time*1e3)/((double)plist.get_n_steps())
+    ); 
 
-            //make a local copy of the likelihood computer
-            GP::LikelihoodComputer my_cptr(*cptr_const); 
-
-            std::vector<double> my_pars(2, 0.); 
-
-            for (size_t ti=start; ti<end; ti++) {
-            
-                auto& point = nll_pts[ti];         
-                my_pars[0] = point.x; 
-                my_pars[1] = point.y; 
-                double nll = my_cptr.ComputeNLL(my_pars.data());   
-                if (peak_search::numbers::is_nan(nll) || nll > max_nll) {
-                    point.val = 0.; 
-                } else { 
-                    point.val = nll; 
-                }
-            }
-        }); 
-
-        std::printf("thread %zi/%zi, range=[%zi, %zi]\n", t, n_threads-1, start, end); 
-        start = end; 
-    }
-
-    for (auto& thread : threads) thread.join(); 
+    //combine all histograms into one 
+    hist_param_space = t_hist.aggregate(); 
 
     auto canv = new TCanvas; 
     canv->SetRightMargin(0.15); 
-    for (const auto& pt : nll_pts) hist_param_space->Fill( pt.x, pt.y, pt.val ); 
     hist_param_space->Draw("colz"); 
     return; 
 }
@@ -224,6 +237,39 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 //_____________________________________________________________________________________________________________________
 //_____________________________________________________________________________________________________________________
 //_____________________________________________________________________________________________________________________
+template<typename F, int Nthreads> void parallel_for(std::size_t n_tasks, const F& fcn, std::size_t chunk_size, std::size_t n_threads)
+{
+    //keeps track of tasks
+    alignas(64) std::atomic<std::size_t> task_id{0}; 
+
+    // if there are no tasks, then quit
+    if (n_tasks<1) return; 
+
+    //get the number of threads
+    if (n_threads<1) n_threads = std::thread::hardware_concurrency(); 
+
+    std::array<std::thread, Nthreads> threads; threads.reserve(n_threads); 
+
+    if (chunk_size<1) chunk_size = std::max<std::size_t>( 1, n_tasks / (100 * n_threads)); 
+
+    for (size_t t=0; t<n_threads; t++) {
+
+        threads[t] = [&fcn, &task_id, n_tasks, chunk_size, n_threads, t]{
+
+            while (1) {
+                std::size_t start = task_id.fetch_add(chunk_size, std::memory_order_relaxed); 
+                std::size_t end   = std::min<std::size_t>( n_tasks, start + chunk_size ); 
+
+                //quit if all tasks have already been scheduled
+                if (start >= n_tasks) break;    
+
+                for (std::size_t index=start; index<end; index++) fcn(index, t); 
+            }; 
+        }; 
+    }
+
+    for (auto& thread : threads) thread.join(); 
+}
 //_____________________________________________________________________________________________________________________
 double gen_event(double min, double max, TRandom3& gen)
 {
