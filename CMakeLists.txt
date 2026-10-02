@@ -14,6 +14,18 @@ find_package(ROOT 6.20 REQUIRED COMPONENTS Core RIO Physics MathCore)
 find_package(Eigen3 5.0 REQUIRED)
 
 #---------------------------------------------------------
+#   Include the 'analysis_utils' library. 
+#   To tell you the truth, I would have no idea how to write this stanza on my own. Claude held my hand through it. - Seth 2 oct 26
+include(FetchContent)
+FetchContent_Declare(
+    analysis_utils
+    GIT_REPOSITORY      https://github.com/sethcarl2000/analysis_utils.git
+    GIT_TAG             v0.1.0
+    GIT_SHALLOW         TRUE
+)
+FetchContent_MakeAvailable(analysis_utils)
+
+#---------------------------------------------------------
 #   Define sources and headers
 set(sources 
     src/legendre_polynomial.cpp
@@ -44,6 +56,10 @@ set(sources
     src/Fcn1D/FcnSum.cpp
     # GP
     src/GP/Compute.cpp
+    src/GP/LikelihoodComputer.cpp
+    src/GP/Computer.cpp
+    src/GP/Train.cpp
+    src/GP/Normalize_points.cpp
 )
 
 set(headers 
@@ -82,8 +98,7 @@ set(headers
     include/Fcn1D/Gauss.hpp
     include/Fcn1D/FcnSum.hpp
     # GP
-    include/GP/Compute.hpp
-    include/GP/Point.hpp
+    include/GP.hpp
 )
 
 #---------------------------------------------------------
@@ -114,6 +129,6 @@ endif()
 
 
 target_include_directories(ApexPeakSearch PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(ApexPeakSearch PUBLIC ROOT::Core Eigen3::Eigen)
+target_link_libraries(ApexPeakSearch PUBLIC ROOT::Core Eigen3::Eigen) #analysis_utils::analysis_utils)
 
 root_generate_dictionary(G__ApexPeakSearch ${headers} LINKDEF LinkDef.h MODULE ApexPeakSearch)
