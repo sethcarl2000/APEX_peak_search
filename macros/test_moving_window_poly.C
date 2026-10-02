@@ -24,6 +24,7 @@
 #include <TLegend.h> 
 // stdlib
 #include <vector> 
+#include <iostream> 
 
 /// @brief Returns estimate of mass resolution for the given mass hypothesis (this is a slightly conservative over-estimate)
 /// @param mass_hypothesis mass hypothesis (MeV)
@@ -31,6 +32,12 @@
 double mass_resolution(double mass_hypothesis)
 {
     return 1. + (mass_hypothesis - 140.) * ((0.8 - 1.0)/(270 - 140)); 
+}
+
+/// @brief Return empty vector of given type, with reserved size of 'n'
+template <typename T> std::vector<T> make_resd_vec(const std::size_t n) {
+    std::vector<T> vec; vec.reserve(n);
+    return vec;  
 }
 
 ///________________________________________________________________________________________________________
@@ -47,7 +54,7 @@ void test_scan()
     //pick a reasonable number of bins
     FitTest::Configuration config; 
 
-    config.total_stats = 45e6; 
+    config.total_stats = 100e6; 
 
     config.n_steps_per_task = 200; 
 
@@ -79,12 +86,10 @@ void test_scan()
         "h_pZ", "p(Q0) vs m;signal mass hypothesis (MeV);p(Q0)",  
         50, 0., 1.
     );  
-
-
-    //config.n_threads = 1; 
-
-
-    auto p_mass = config.params.Append(400, min_mass, max_mass);   
+    //config.n_threads = 1;
+    
+    const int n_mass_tests = 400; 
+    auto p_mass = config.params.Append(n_mass_tests, min_mass, max_mass);   
 
     FitTest::Outputs outputs; 
 
@@ -93,6 +98,12 @@ void test_scan()
     auto p_m_vs_uCL  = outputs.Add(h_m_vs_uCL);
     auto p_m_vs_e2CL = outputs.Add(h_m_vs_e2CL);
     auto p_pQ0       = outputs.Add(h_pQ0);
+
+    const int n_scans = 200; 
+
+    bool fill_pts = false; 
+    auto pts_m    = make_resd_vec<double>(n_mass_tests); 
+    auto pts_eps2 = make_resd_vec<double>(n_mass_tests); 
 
     auto fit_window_fcn = static_cast<FitTest::Function>([&](FitTest::ThreadManager* mgr)
     {
@@ -141,38 +152,53 @@ void test_scan()
         //get the middle(-ish)bin. this gives us an order-of-magnitude estimate for the natural variance of the signal paramter, mu.
         double N_middle = spectrum.bins.at( spectrum.GetNbins()/2 ).N; 
 
-        mgr->GetOutput<TH2D>(p_m_vs_mu)  ->Fill(mass, mu); 
-        mgr->GetOutput<TH2D>(p_m_vs_Z)   ->Fill(mass, Z); 
-        mgr->GetOutput<TH2D>(p_m_vs_uCL) ->Fill(mass, std::log10(mu_cl95)); 
-        mgr->GetOutput<TH2D>(p_m_vs_e2CL)->Fill(mass, std::log10(epsilon2_CL)); 
+        if (fill_pts) {
+            pts_m.emplace_back(mass); 
+            pts_eps2.emplace_back(std::log10(epsilon2_CL)); 
+        } else {
+            mgr->GetOutput<TH2D>(p_m_vs_mu)  ->Fill(mass, mu); 
+            mgr->GetOutput<TH2D>(p_m_vs_Z)   ->Fill(mass, Z); 
+            mgr->GetOutput<TH2D>(p_m_vs_uCL) ->Fill(mass, std::log10(mu_cl95)); 
+            mgr->GetOutput<TH2D>(p_m_vs_e2CL)->Fill(mass, std::log10(epsilon2_CL)); 
 
-        mgr->GetOutput<TH1D>(p_pQ0)->Fill(pQ0); 
+            mgr->GetOutput<TH1D>(p_pQ0)->Fill(pQ0);
+        } 
         return;
     });
 
-    FitTest::Run(200, config, outputs, fit_window_fcn); 
 
+    FitTest::Run(n_scans, config, outputs, fit_window_fcn); 
     //now, we're going to do one **real** scan (still on the accidental spectrum)
+    TCanvas *canv; 
 
-    new TCanvas;
+    //now, run once and fill test points
+    fill_pts = true; 
+    config.n_threads = 1;
+    FitTest::Run(1, config, outputs, fit_window_fcn, 0); 
+    std::cout << "size: " << pts_m.size() << "\n"; 
+
+    canv = new TCanvas;
     gStyle->SetOptStat(0); 
 
     h_m_vs_mu->Draw("col"); 
 
-    new TCanvas;
+    canv = new TCanvas;
     h_m_vs_Z->Draw("col"); 
 
-    new TCanvas;
+    canv = new TCanvas;
     h_m_vs_uCL->Draw("col"); 
 
-    new TCanvas;
+    canv = new TCanvas;
+    canv->SetTopMargin(0.15);
     h_m_vs_e2CL->SetTitle(Form("CL=0.95 upper limits on #varepsilon^{2}, %.1f x 10^{6} events;signal mass hypothesis (MeV);#epsilon^{2}, CL=0.95", config.total_stats/1e6));
-    make_brazil_flag_plot(h_m_vs_e2CL); 
+    make_brazil_flag_plot(h_m_vs_e2CL, Form("Avg. of %i pseudo-spectra",n_scans)); 
+    auto g = new TGraph(pts_m.size(), pts_m.data(), pts_eps2.data());  
+    g->Draw("SAME"); 
 
-    new TCanvas;
+    canv = new TCanvas; 
     h_pQ0->SetMaximum( h_pQ0->GetMaximum()*1.5 );
     h_pQ0->SetMinimum( 0. );  
-    h_pQ0->Draw("E"); 
+    h_pQ0->Draw("HIST"); 
 }
 
 
