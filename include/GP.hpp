@@ -72,6 +72,8 @@ private:
     double fPrefactor; 
 
 public: 
+    LikelihoodComputer() = default; 
+
     LikelihoodComputer(const std::vector<Point>& points, Kernel kernel); 
 
     /// @brief Compute marginal likelihood w/r/t a given set of points 
