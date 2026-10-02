@@ -9,12 +9,14 @@
 #include <TGraph.h> 
 // stdlib 
 #include <vector> 
+#include <string> 
 
 /// @brief Make classic HEP-style brazilian flag plot, with median and quantiles specified below. 
 /// @param hist histogram to convert to brazil-flag plot (quantiles scanned vertically)
+/// @param legend_title legend of the title to put on the plot
 /// @param cl_1 first central quantile (green)
 /// @param cl_2 second central quantile (yellow)
-void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.47724987)
+void make_brazil_flag_plot(TH2D* hist,  std::string legend_title="", double cl_1=0.341344746069, double cl_2=0.477249868052)
 {
     //go through each bin, and find the cumulative stats corresponding to each cl given. 
     const std::vector<double> levels{ 0.5-cl_2, 0.5-cl_1, 0.5, 0.5+cl_1, 0.5+cl_2 };
@@ -77,10 +79,10 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
         x.push_back(x_ax->GetBinCenter(bx)); 
 
         y_cl1    .emplace_back((y1_hi + y1_lo)/2.);
-        y_err_cl1.emplace_back((y1_hi - y1_lo));
+        y_err_cl1.emplace_back((y1_hi - y1_lo)/2.);
 
         y_cl2    .emplace_back((y2_hi + y2_lo)/2.);
-        y_err_cl2.emplace_back((y2_hi - y2_lo));
+        y_err_cl2.emplace_back((y2_hi - y2_lo)/2.);
 
         y_med.emplace_back(y_median); 
     }
@@ -98,9 +100,11 @@ void make_brazil_flag_plot(TH2D* hist, double cl_1=0.34134475, double cl_2=0.477
 
     auto gmed = new TGraph(n_bins_x, x.data(), y_med.data()); 
     gmed->SetLineStyle(kDashed); 
+    gmed->SetLineWidth(2); 
     gmed->Draw("SAME"); 
 
-    auto legend = new TLegend; 
+    auto legend = new TLegend;
+    if (!legend_title.empty()) legend->SetHeader(legend_title.c_str());  
     legend->AddEntry(g1, "#pm 1 #sigma");
     legend->AddEntry(g2, "#pm 2 #sigma");
     legend->AddEntry(gmed, "median");
