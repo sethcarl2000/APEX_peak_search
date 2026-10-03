@@ -23,7 +23,7 @@
 namespace peak_search 
 {
 
-double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations)
+double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, Fcn1D* param_nll_prior,  int max_iterations)
 {
     //check to make sure that the fcn and params match
     if (fcn.GetDoF() != (int)params.size()) {
@@ -40,7 +40,6 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
     //set the parameters
     fcn.SetParams(params); 
 
-    size_t n_mutable=0; 
     std::vector<size_t> ind; ind.reserve(params.size());
 #ifdef DEBUG_NEWTON
     std::printf("<%s> starting parameter list:\n", __func__);
@@ -54,25 +53,32 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
         if (!par.is_fixed) { ind.push_back(i); }
     }
 
-    n_mutable = ind.size(); 
+    const std::size_t n_mutable = ind.size(); 
     if (n_mutable < 1) { 
         std::printf("<%s>: no mutable params.\n", __func__);
         return 0.; 
     }
 
+    //should we incorporate the nll prior P. of the params? 
+    const bool has_prior = (param_nll_prior != nullptr); 
+
     double eta=0.; 
 
-    for (int it=0; it<max_iterations; it++) {
+    //loop over all bins. compute 'eta' 
+    VectorXd dEta(n_mutable);  
+    VectorXd dX(n_mutable); 
+    MatrixXd J(n_mutable, n_mutable); 
 
-        //loop over all bins. compute 'eta' 
-        VectorXd dEta = VectorXd::Zero(ind.size()); 
-        MatrixXd J    = MatrixXd::Zero(ind.size(), ind.size()); 
+    std::vector<double> dL_dTi(n_mutable, 0.);             
+    std::vector<double> dL_dTi_dTj(n_mutable*n_mutable, 0.); 
+
+    for (int it=0; it<max_iterations; it++) {
         
+        dEta.setZero();
+        J   .setZero();
+
         double chi2 =0.; 
         eta = 0.; 
-
-        std::vector<double> dL_dTi(ind.size(), 0.);             
-        std::vector<double> dL_dTi_dTj(ind.size()*ind.size(), 0.); 
 
         for (const auto& bin : data.bins) {
             
@@ -89,13 +95,15 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
             eta += lambda_i - n_i*std::log(lambda_i);
 
             //get the derivatives of the expectation values for each bin 
-            for (int i=0; i<ind.size(); i++) {
+            for (int i=0; i<n_mutable; i++) {
 
+                //this is a vector of the first derivatives of each bin's expectation values w/r/t each parameter
                 dL_dTi[i] 
                     = gauss_integrate([&ind,i,&fcn](double x){ return fcn.Di(x, ind[i]); }, x0,x1); 
 
-                for (int j=i; j<ind.size(); j++) {
+                for (int j=i; j<n_mutable; j++) {
 
+                    // this is a vector of second derivatives of each bins expectation value w/r/t each parameter 
                     dL_dTi_dTj[i*n_mutable + j] 
                         = gauss_integrate([&ind,i,j,&fcn](double x){ return fcn.Di_Dj(x, ind[i],ind[j]); }, x0,x1); 
                 }
@@ -109,13 +117,13 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
                 );
 
                 std::cerr << "first derivative:\n";
-                for (size_t i=0; i<ind.size(); i++) {
+                for (size_t i=0; i<n_mutable; i++) {
                     std::fprintf(stderr, "%+10.3e\n", dL_dTi[i]); 
                 }
 
                 std::cerr << "second derivative:\n"; 
-                for (size_t i=0; i<ind.size(); i++) {
-                    for (size_t j=0; j<ind.size(); j++) {
+                for (size_t i=0; i<n_mutable; i++) {
+                    for (size_t j=0; j<n_mutable; j++) {
                         std::fprintf(stderr, "%+10.3e", dL_dTi[i]); 
                     
                     } std::cerr << "\n";
@@ -124,22 +132,30 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
             }
 
 
-            for (int i=0; i<ind.size(); i++) {
+            for (int i=0; i<n_mutable; i++) {
 
-                dEta(i) += arg*dL_dTi[i]; 
+                dEta(i) += arg*dL_dTi[i];
 
                 for (int j=i; j<n_mutable; j++) 
                     J(i,j) += dL_dTi[i]*dL_dTi[j]*n_i/(lambda_i*lambda_i)  +  arg*dL_dTi_dTj[i*n_mutable + j]; 
+            }
+
+            if (has_prior) {
+                for (int i=0; i<n_mutable; i++) { 
+                    dEta(i) += param_nll_prior->Di(0., i); 
+
+                    for (int j=i; j<n_mutable; j++) J(i,j) += param_nll_prior->Di_Dj(0., i,j); 
+                }
             }
 
         }// for (const auto& bin : data.bins)
 
         for (int i=1; i<n_mutable; i++) { for (int j=0; j<i; j++) J(i,j) = J(j,i); }
 
-        VectorXd dX = J.llt().solve(dEta); 
+        dX = J.llt().solve(dEta); 
 
         //add this result to the overall value
-        for (size_t i=0; i<ind.size(); i++) {
+        for (size_t i=0; i<n_mutable; i++) {
             params[ind[i]].val += -dX(i);  
         }
 #ifdef DEBUG_NEWTON
@@ -152,6 +168,7 @@ double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_paramet
 #endif
 
         fcn.SetParams(params); 
+        if (has_prior) param_nll_prior->SetParams(params); 
     }
     
 #ifdef DEBUG_NEWTON

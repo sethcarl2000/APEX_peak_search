@@ -14,9 +14,10 @@ namespace peak_search
 /// @param data data to fit
 /// @param fcn Fcn1D fcn to use
 /// @param params parameters of the function to use
+/// @param param_nll_prior if the fit-paramters have a prior probability dist (in bayesian inference methods), then this function supplies the NLL of this dist (we evaluate f(x=0) at each call, p(params) is only a function of the parameters themselves.)
 /// @param max_iterations maximum number of iterations to execute
 /// @return returns the 'eta' (NLL without combinatoric factor)
-double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, int max_iterations=8); 
+double newton_optimizer(const Histo1D& data, Fcn1D& fcn, std::vector<fit_parameter_t>& params, Fcn1D* param_nll_prior=nullptr, int max_iterations=8); 
 
 };
 
