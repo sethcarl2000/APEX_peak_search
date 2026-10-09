@@ -23,6 +23,7 @@
 #include <TRandom3.h>
 #include <TGraph.h>
 #include <TGraphErrors.h>
+#include <Math/ProbFuncMathCore.h>
 #include <TLine.h> 
 #include <TError.h> 
 #include <TCanvas.h>
@@ -73,10 +74,7 @@ double gen_event(double min, double max, TRandom3&);
 
 void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::string hist_name="h_m")
 {
-
-    
     using namespace peak_search;
-
 
     TH1D* hist; 
     TFile* infile; 
@@ -113,19 +111,38 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
     gPad->SetLogy(1); 
     hist->DrawCopy("E"); 
 
+    const std::size_t n_pts = hist->GetXaxis()->GetNbins(); 
+
     //normalize the data: 
+    std::vector<GP::Point> log_data; log_data.reserve(n_pts); 
+
+    auto hist_data = make_histogram_copy(hist); 
+
+    for (const auto& bin : make_histogram_copy(hist).bins) {
+        log_data.emplace_back(
+            0.5*(bin.xmin + bin.xmax), //x-position
+            std::log10(bin.N), //value
+            1./( bin.N * std::log(10.)*std::log(10) ) //variance
+        ); 
+    }   
 
     GP::TrainParameters params; 
 
+    params.draw_fit = false; 
 
-    params.data = make_histogram_copy(hist); 
+    // log-data 
+    params.data = log_data; 
 
-    std::vector<double> pars{-1.8, 0.}; 
+    std::vector<GP::HyperParameter> gp_params{
+        {1., {-2., +6.}, "log_rms_slope", 0.5},
+        {0., {-6., +6.}, "log_A",         0.5}
+    };  
 
 
     /// Param definitions: 
     /// par[0] = log RMS slope log(A / sigma^2)
     /// par[1] = log characteristic length scale log(sigma)
+    std::vector<double> pars{1., 0.}; 
     params.kernel = GP::Kernel{ 
         [](double x1, double x2, const std::vector<double>& params){
             
@@ -136,10 +153,11 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
             double arg = (x1 - x2)/sigma; 
             return A * std::exp( -0.5*arg*arg ); 
-        }, pars
+        }, {1., 0.}
     };
     
-    params.params_bounds = {}; 
+    params.params = gp_params; 
+    params.minuit_printlevel = 2; 
 
     params.draw_fit = true; 
 
@@ -149,11 +167,80 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     const bool fit_success = static_cast<bool>(params); 
 
-    if (!params) {
+    if (!fit_success) {
         Error(__func__, "Something went wrong with the GP training. what(): %s", params.status.c_str()); 
     }
+        
+    std::vector<double> pts_x(n_pts), pts_y(n_pts), pts_err(n_pts), pts_predict(n_pts), pts_residual(n_pts);
 
+    for (std::size_t i=0; i<n_pts; i++) {
 
+        pts_x[i] = log_data[i].x; 
+        pts_y[i] = log_data[i].y; 
+        pts_err[i] = std::sqrt( log_data[i].variance ); 
+    }
+
+    auto log_data_predict = log_data; 
+
+    computer->Compute(log_data, log_data_predict); 
+
+    for (std::size_t i=0; i<n_pts; i++) {
+        pts_x[i] = log_data[i].x;
+        pts_y[i] = log_data[i].y; 
+        pts_predict[i] = log_data_predict[i].y; 
+        
+        pts_residual[i] = (log_data[i].y - log_data_predict[i].y)/std::sqrt(log_data[i].variance); 
+    }
+
+    TCanvas *canv;
+    TGraph *g;
+    TGraphErrors *ge; 
+
+    canv = new TCanvas; 
+    g = new TGraph(n_pts, pts_x.data(), pts_y.data()); 
+    
+    g->SetTitle("Histogram and GP compatibility;mass;log_{10} bin count"); 
+    
+    g->SetMarkerStyle(kPlus); 
+    g->SetMarkerSize(0.5); 
+    g->Draw("AP"); 
+    
+    if (fit_success) {
+        g = new TGraph(n_pts, pts_x.data(), pts_predict.data()); 
+        g->SetLineStyle(kSolid); 
+        g->SetLineColor(kRed);
+        g->Draw("SAME"); 
+
+        auto std_err = std::vector<double>(n_pts, 1.); 
+
+        canv = new TCanvas; 
+       
+        g = new TGraph(n_pts, pts_x.data(), pts_residual.data()); 
+        g->SetTitle("Per-bin residuals from GP fit;mass;(x_{i} - <x_{i}>) / #sigma_{i}"); 
+        g->SetMarkerStyle(kFullCircle); 
+        g->SetFillColor(kBlack);
+        g->SetMarkerSize(0.5); 
+        g->Draw("APL"); 
+
+        auto l = new TLine; 
+        l->SetLineColor(kRed); 
+        l->DrawLine(pts_x.front(),0., pts_x.back(), 0.); 
+        
+        l->SetLineStyle(kDashed); 
+        l->DrawLine(pts_x.front(),+1., pts_x.back(),+1); 
+        l->DrawLine(pts_x.front(),-1., pts_x.back(),-1);
+
+        auto hist_residual = new TH1D("h_residual", "P-value distribution of bin-residuals (GP Fit);p(residual);", 25, 0., 1.); 
+        for (auto z : pts_residual) {
+            hist_residual->Fill( ROOT::Math::normal_cdf(z, 1., 0.) ); 
+        }
+        canv = new TCanvas; 
+        hist_residual->SetMinimum(0.); 
+        hist_residual->SetMaximum( hist_residual->GetMaximum()*3. ); 
+        hist_residual->Draw("HIST E"); 
+    }    
+    return; 
+    
     Eigen::MatrixXd cov_matrix = params.covariance_matrix; 
 
     double L1, L2, theta; 
@@ -234,7 +321,7 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
     //combine all histograms into one 
     hist_param_space = t_hist.aggregate(); 
 
-    auto canv = new TCanvas; 
+    canv = new TCanvas; 
     canv->SetRightMargin(0.15); 
     hist_param_space->Draw("colz"); 
 
