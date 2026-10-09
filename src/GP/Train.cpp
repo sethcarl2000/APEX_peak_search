@@ -30,7 +30,7 @@ void Train(TrainParameters& params, Computer* computer)
 
     // for the given field, scale all values so they fall in the range [-1, +1]
     auto get_maxmin = [&data](const std::vector<Point>& pts, double Point::*field, double& min, double& max) {
-        min=+1e30; max=-1e30; 
+        min=pts.front().*field; max=pts.front().*field; 
         for (const auto& pt : pts) { 
             min = std::min(pt.*field, min); 
             max = std::max(pt.*field, max); 
@@ -42,17 +42,18 @@ void Train(TrainParameters& params, Computer* computer)
     // the actual kernel, whose hyperparamters we will seek to optimize
     auto& kernel = params.kernel;   
     if (make_computer) computer->fKernel = kernel; 
-
-    double xmin=data.GetXmin(); 
-    double xmax=data.GetXmax(); 
-
-    auto all_points = Normalize_points(params.data); 
     
-    double ymin, ymax; 
-    get_maxmin(all_points, &Point::y, ymin, ymax); 
 
-    ymin = std::log(ymin); 
-    ymax = std::log(ymax); 
+    double xmin,xmax; 
+    get_maxmin(data, &Point::x, xmin, xmax); 
+    
+    double ymin,ymax; 
+    get_maxmin(data, &Point::y, ymin, ymax); 
+
+    auto norm_data = Normalize_points(data); 
+
+    //ymin = std::log(ymin); 
+    //ymax = std::log(ymax); 
 
     double y_mean  = (ymax + ymin)/2.;
     double y_scale = (ymax - ymin)/2.; 
@@ -66,27 +67,23 @@ void Train(TrainParameters& params, Computer* computer)
     const size_t n_params = kernel.params.size(); 
 
     if (make_computer) {
-
         computer->x_mean  = x_mean; 
         computer->x_scale = x_scale; 
         computer->y_mean  = y_mean; 
         computer->y_scale = y_scale; 
     }
 
-    const size_t n_points = all_points.size(); 
+    const size_t n_points = norm_data.size(); 
     std::vector<double> pts_x, pts_y, pts_stddev; 
     TCanvas* canv; 
     if (do_draw) {
         pts_x       .reserve(n_points); 
         pts_y       .reserve(n_points); 
         pts_stddev  .reserve(n_points);
-        for (const auto& pt : all_points) {
-            
-            if (do_draw) {
-                pts_x.push_back(pt.x);
-                pts_y.push_back(pt.y);
-                pts_stddev.push_back(std::sqrt(pt.variance)); 
-            }
+        for (const auto& pt : norm_data) {
+            pts_x.push_back(pt.x);
+            pts_y.push_back(pt.y);
+            pts_stddev.push_back(std::sqrt(pt.variance)); 
         }
         canv = new TCanvas; 
         auto g = new TGraphErrors(pts_x.size(), pts_x.data(), pts_y.data(), nullptr, pts_stddev.data()); 
@@ -98,9 +95,9 @@ void Train(TrainParameters& params, Computer* computer)
     minimizer->SetMaxFunctionCalls(1e7); 
     minimizer->SetMaxIterations(1e6); 
     minimizer->SetTolerance(1e-5);
-    minimizer->SetPrintLevel(1);    
+    minimizer->SetPrintLevel(params.minuit_printlevel);    
 
-    auto nll_computer = std::make_unique<GP::LikelihoodComputer>(all_points, kernel); 
+    auto nll_computer = std::make_unique<GP::LikelihoodComputer>(norm_data, kernel); 
 
     double nll; 
 
@@ -110,11 +107,11 @@ void Train(TrainParameters& params, Computer* computer)
 
     minimizer->SetFunction(f_objective); 
 
-    auto& pars = kernel.params; 
+    auto& pars = params.params; 
 
     unsigned i_par=0; 
-    for (const auto par : pars) {
-        minimizer->SetVariable(i_par, Form("par_%u",i_par), par, 1e-4); 
+    for (const auto& par : pars) {
+        minimizer->SetVariable(i_par, par.name, par.val, par.precision); 
         ++i_par; 
     }
 

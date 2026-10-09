@@ -86,7 +86,7 @@ static_assert(std::is_copy_constructible_v<LikelihoodComputer>);
 /// @brief Given a histogram, return a normalized set of GP::Point-s (with y -> ln(y)), so that all x-values and y-values span the range [-1,1]
 /// @param data input poitns to normlaize
 /// @return output datapoints, normalized w/r/t x and y s.t. x \in [-1,1], ln(y) \in [-1,1]
-std::vector<Point> Normalize_points(const Histo1D& data); 
+std::vector<Point> Normalize_points(const std::vector<Point>& data); 
 
 struct TrainResult {
 
@@ -102,14 +102,23 @@ template<typename T> struct Bound {
     T clamp(const T& val) const { return (val<min ? min : (val>max ? max : val)); }
 }; 
 
+struct HyperParameter {
+    double val; 
+    Bound<double> bounds; 
+    std::string name{""}; 
+    double precision=1e-4; 
+}; 
+
 struct TrainParameters {
 
     std::string status{"null"}; 
     Kernel kernel; 
     Eigen::MatrixXd covariance_matrix; 
-    Histo1D data; 
-    std::vector<Bound<double>> params_bounds{}; 
+    std::vector<GP::Point> data{}; 
+    std::vector<HyperParameter> params; 
     bool draw_fit{false}; 
+
+    int minuit_printlevel = 1; 
 
     operator bool() const { return status == "Success"; }
 };
