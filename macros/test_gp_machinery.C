@@ -1,4 +1,5 @@
 
+#include "cov_matrix_to_ellipse.h"
 #include <GP.hpp>
 #include <Histo1D.hpp> 
 #include <make_histogram_copy.hpp>
@@ -119,7 +120,7 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     params.data = make_histogram_copy(hist); 
 
-    std::vector<double> pars{0., -2.}; 
+    std::vector<double> pars{-1.8, 0.}; 
 
 
     /// Param definitions: 
@@ -130,14 +131,11 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
             
             if (params.size() != 2) return peak_search::numbers::nan; 
 
-            double log_rms_slope = params[0]; 
-            double log_sigma     = params[1]; 
-
-            double sigma = std::exp(log_sigma); 
-            double amplitude = std::exp(2.*log_rms_slope) * sigma; 
+            double sigma = std::exp( 0.5*params[1] - params[0] );
+            double A     = std::exp( params[1] ); 
 
             double arg = (x1 - x2)/sigma; 
-            return amplitude * std::exp( -0.5*arg*arg ); 
+            return A * std::exp( -0.5*arg*arg ); 
         }, pars
     };
     
@@ -149,11 +147,24 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     GP::Train(params, computer.get()); 
 
+    const bool fit_success = static_cast<bool>(params); 
+
     if (!params) {
         Error(__func__, "Something went wrong with the GP training. what(): %s", params.status.c_str()); 
     }
 
-    //return; 
+
+    Eigen::MatrixXd cov_matrix = params.covariance_matrix; 
+
+    double L1, L2, theta; 
+    if (fit_success) {
+        cov_matrix_to_ellipse(
+            cov_matrix(0,0), cov_matrix(1,1), cov_matrix(0,1), 
+            L1, L2, theta
+        );
+    }
+
+    double fit_x{params.kernel.params[0]}, fit_y{params.kernel.params[1]}; 
 
     // scan 2d parameter space 
 
@@ -162,11 +173,12 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
 
     int n_bins = 200; 
 
-    auto hist_param_space = new TH2D("h_data", "Parameter space;log RMS slope (#sqrt{A/#sigma^{2}});log Length scale (#sigma);- log L",  
-        n_bins, std::log(0.04), std::log(4000), 
-        n_bins, std::log(0.004), std::log(2.8)
+    auto hist_param_space = new TH2D(
+        "h_data", 
+        "Parameter space for k(|x|) = A e^{-|x|^{2}/2#sigma^{2} };log[ #sqrt{ <f'(x)^{2}> } ] = log[ #sqrt{A} / #sigma ];log[ A ];-log L",  
+        n_bins, -2, 6., 
+        n_bins, std::log(0.001), std::log(800.)
     ); 
-
     double dx = hist_param_space->GetXaxis()->GetBinWidth(1); 
     double dy = hist_param_space->GetYaxis()->GetBinWidth(1); 
 
@@ -180,8 +192,8 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
     using namespace analysis_utils;    
     auto plist = task::param_list<nll_pt>(); 
 
-    plist.add(&nll_pt::x, std::log(0.04)+dx/2., std::log(4000)-dx/2., n_bins); 
-    plist.add(&nll_pt::y, std::log(0.004)+dy/2., std::log(2.8)-dy/2., n_bins); 
+    plist.add(&nll_pt::x, xax->GetBinCenter(1), xax->GetBinCenter(n_bins), n_bins); 
+    plist.add(&nll_pt::y, yax->GetBinCenter(1), yax->GetBinCenter(n_bins), n_bins); 
 
     task::config_t cfg; 
 
@@ -225,6 +237,37 @@ void test_gp_machinery(std::string path_file="data/hist-accidental.root", std::s
     auto canv = new TCanvas; 
     canv->SetRightMargin(0.15); 
     hist_param_space->Draw("colz"); 
+
+    if (fit_success) {
+        std::printf(
+            "center: (%+10.4e, %+10.4e)\n"
+            "eigenvalues / eigenvectors:\n" 
+            "   %+10.4e     [%+10.4e, %+10.4e]\n"
+            "   %+10.4e     [%+10.4e, %+10.4e]\n"
+            "theta: %+.1f deg\n",
+            fit_x, fit_y, 
+            L1, std::cos(theta),  std::sin(theta), 
+            L2, std::sin(-theta), std::cos(theta),
+            theta*(180./3.14159265)
+        );
+        auto ellipse = new TEllipse(fit_x, fit_y, L1, L2, 0., 360., (180./3.14159265)*theta); 
+        ellipse->SetFillStyle(0);
+        ellipse->SetLineColor(kRed); 
+        ellipse->Draw("SAME"); 
+
+        ellipse = new TEllipse(fit_x, fit_y, 2.*L1, 2.*L2, 0., 360., (180./3.14159265)*theta); 
+        ellipse->SetFillStyle(0);
+        ellipse->SetLineColor(kRed);
+        ellipse->SetLineStyle(kDashed);  
+        ellipse->Draw("SAME"); 
+
+        TLine* line = new TLine; 
+        line->SetLineColor(kRed); 
+        line->SetLineStyle(kDashed); 
+
+        line->DrawLine(fit_x,yax->GetXmin(), fit_x,yax->GetXmax()); 
+        line->DrawLine(xax->GetXmin(),fit_y, xax->GetXmax(),fit_y); 
+    }
     return; 
 }
 
