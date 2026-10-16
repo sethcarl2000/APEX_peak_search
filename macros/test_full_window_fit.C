@@ -54,14 +54,13 @@ void test_full_window_fit()
     const double max_mass = 270.; 
 
     int n_steps = 400; 
-    int n_bins  = n_steps/4; 
+    int n_bins  = n_steps/2; 
     const double dm_fit = (max_mass - min_mass)/((double)n_steps-1); 
 
     //pick a reasonable number of bins
     FitTest::Configuration config; 
 
-    config.total_stats = 246e6; 
-
+    config.total_stats = 100e6; 
     config.n_steps_per_task = 200; 
 
 
@@ -69,7 +68,7 @@ void test_full_window_fit()
     using ASG = peak_search::AccidentalSpectraGenerator; 
 
     auto t_Z_corr = root::threadlocal_hist(new TH2D(
-        "h_Z", "Covariance matrix of Z (significance): #braket{Z(m_{1})Z(m_{2})};mass 1;mass 2",
+        "h_Z", "Covariance of Significance of signal-test for each mass: <Z(m_{1})Z(m_{2})>;mass 1;mass 2",
         n_bins, min_mass-dm_fit/2., max_mass+dm_fit/2.,
         n_bins, min_mass-dm_fit/2., max_mass+dm_fit/2.
     )); 
@@ -154,7 +153,7 @@ void test_full_window_fit()
         }
     };
 
-    const int max_scans = 320; 
+    const int max_scans = 250; 
 
     task::config_t cfg; 
     cfg.n_scans = max_scans; 
@@ -203,7 +202,7 @@ void test_full_window_fit()
             //fit the background
             auto background_poly = peak_search::fit_exponential_poly(subhist, 6).data; 
             
-            auto stat_result = peak_search::compute_statistics(subhist, gaussian_fcn, background_poly, mass, 0.10, 1.); 
+            auto stat_result = peak_search::compute_statistics(subhist, gaussian_fcn, background_poly, mass, 0.10, nullptr, 1.); 
 
             if (stat_result.status != peak_search::Status::kSuccess) {
                 Warning("fit_window_function", "Fit failed for mass: %.1f", mass); 
@@ -247,7 +246,8 @@ void test_full_window_fit()
             const auto& pts_Z = t_pts_Z(thread_id); 
             for (int i=0; i<n_fitpts; i++) {
                 for (int j=0; j<n_fitpts; j++) {
-                    t_Z_corr(thread_id)->Fill( pts_mm[i], pts_mm[j], pts_Z[i]*pts_Z[j] ); 
+                    if (!peak_search::numbers::is_nan(pts_Z[i]) && !peak_search::numbers::is_nan(pts_Z[j]))
+                        t_Z_corr(thread_id)->Fill( pts_mm[i], pts_mm[j], pts_Z[i]*pts_Z[j] ); 
                 }
             }
         }
